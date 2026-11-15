@@ -1,0 +1,20 @@
+# Secrets
+.env
+web/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local app data (planner database, chat logs)
+data/
+
+# Vercel / deploy
+.vercel/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
