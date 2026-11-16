@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 import store
+import rewards
 from ui_theme import (ACCENT, BG, BODY, BORDER, DEEP, FAINT, MUTED, TEXT,
                       button, empty_note, label, line_edit, page_header,
                       page_style)
@@ -100,6 +101,8 @@ class TasksPage(QWidget):
 
     def _toggle(self, task: dict, checked: bool) -> None:
         store.set_task_done(task["id"], checked)
+        if checked:
+            rewards.on_task_completed(task)
         self.refresh()
 
     def _delete(self, task: dict) -> None:

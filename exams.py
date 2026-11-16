@@ -1,4 +1,4 @@
-"""🎯 Exams page - add, see countdowns and delete exams."""
+"""🎯 Exams page - add, see countdowns, log results, delete exams."""
 
 from __future__ import annotations
 
@@ -8,13 +8,17 @@ from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
     QComboBox,
     QDateTimeEdit,
+    QDialog,
     QHBoxLayout,
+    QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+import rewards
 import store
 from ui_theme import (ACCENT, BG, BODY, BORDER, DEEP, FAINT, MUTED, TEXT,
                       button, empty_note, label, page_header, page_style,
@@ -94,6 +98,11 @@ class ExamsPage(QWidget):
         store.delete_exam(exam["id"])
         self.refresh()
 
+    def _log_result(self, exam: dict) -> None:
+        dialog = _ResultDialog(self, exam)
+        if dialog.exec():
+            self.refresh()
+
     # -------------------------------------------------------------- refresh
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -142,8 +151,20 @@ class ExamsPage(QWidget):
                 when.strftime("%a · %d %b %Y · %I:%M %p") if when else exam["occurs_at"], MUTED))
             row_layout.addLayout(left, 1)
 
-            countdown_label = label(countdown, 15, color, bold=True)
-            row_layout.addWidget(countdown_label)
+            when_dt = when
+            if when_dt is not None and when_dt < datetime.now() and not exam.get("done"):
+                how_btn = button("How did it go?", "primary", height=30)
+                how_btn.clicked.connect(lambda _=False, e=exam: self._log_result(e))
+                row_layout.addWidget(how_btn)
+            elif exam.get("done"):
+                result_text = exam.get("result") or "done"
+                if exam.get("marks") is not None:
+                    result_text += f" · {exam['marks']} marks"
+                result_label = label(f"🎓 {result_text}", 13, "#A78BFA", bold=True)
+                row_layout.addWidget(result_label)
+            else:
+                countdown_label = label(countdown, 15, color, bold=True)
+                row_layout.addWidget(countdown_label)
 
             delete_btn = QPushButton("✕")
             delete_btn.setFixedSize(26, 26)
@@ -156,3 +177,77 @@ class ExamsPage(QWidget):
             row_layout.addWidget(delete_btn)
 
             self.list_layout.insertWidget(self.list_layout.count() - 1, row)
+
+
+class _ResultDialog(QDialog):
+    """'How did it go?' - mood + optional marks, awards XP via rewards."""
+
+    MOODS = [("great", "Great! 😄"), ("okay", "Okay 🙂"), ("tough", "Tough one 😓")]
+
+    def __init__(self, parent, exam: dict):
+        super().__init__(parent)
+        self.exam = exam
+        self.setWindowTitle(f"How did {exam['subject']} go?")
+        self.setFixedSize(380, 240)
+        self.setStyleSheet(f"background-color: {DEEP};")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+
+        title = QLabel(f"Your {exam['subject']} exam on {exam['occurs_at'][:10]}")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 15px; font-weight: bold;")
+        title.setWordWrap(True)
+        layout.addWidget(title)
+
+        self.mood_buttons: list[QPushButton] = []
+        mood_row = QHBoxLayout()
+        mood_row.setSpacing(8)
+        for value, text in self.MOODS:
+            btn = QPushButton(text)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setFixedHeight(36)
+            btn.setStyleSheet(
+                f"QPushButton {{ color: {BODY}; background-color: #1D2130; border: 1px solid {BORDER}; "
+                f"border-radius: 8px; font-size: 13px; }}"
+                f"QPushButton:checked {{ background-color: {ACCENT}; color: white; border-color: {ACCENT}; }}"
+            )
+            self.mood_buttons.append(btn)
+            mood_row.addWidget(btn)
+        layout.addLayout(mood_row)
+        self._mood = None
+        for btn in self.mood_buttons:
+            btn.toggled.connect(lambda checked, b=btn: self._set_mood(b) if checked else None)
+
+        marks_row = QHBoxLayout()
+        marks_label = QLabel("Marks (optional):")
+        marks_label.setStyleSheet(f"color: {MUTED}; font-size: 13px;")
+        self.marks_input = QLineEdit()
+        self.marks_input.setPlaceholderText("e.g. 87")
+        self.marks_input.setFixedHeight(34)
+        self.marks_input.setStyleSheet(
+            f"QLineEdit {{ background-color: #1D2130; color: {BODY}; border: 1px solid {BORDER}; "
+            f"border-radius: 8px; padding: 0 10px; }}"
+        )
+        marks_row.addWidget(marks_label)
+        marks_row.addWidget(self.marks_input, 1)
+        layout.addLayout(marks_row)
+
+        layout.addStretch()
+        save_btn = button("Log it  (+50 XP)", "primary", height=38)
+        save_btn.clicked.connect(self._save)
+        layout.addWidget(save_btn)
+
+    def _set_mood(self, button_) -> None:
+        index = self.mood_buttons.index(button_)
+        self._mood = self.MOODS[index][0]
+
+    def _save(self) -> None:
+        if self._mood is None:
+            return
+        marks_text = self.marks_input.text().strip()
+        marks = int(marks_text) if marks_text.isdigit() else None
+        store.set_exam_result(self.exam["id"], self._mood, marks)
+        rewards.on_exam_completed(self.exam, self._mood)
+        self.accept()

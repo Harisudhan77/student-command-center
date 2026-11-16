@@ -27,7 +27,10 @@ CREATE TABLE IF NOT EXISTS exams (
     id         INTEGER PRIMARY KEY,
     subject    TEXT NOT NULL,
     occurs_at  TEXT NOT NULL,
-    created_by TEXT NOT NULL DEFAULT 'user'
+    created_by TEXT NOT NULL DEFAULT 'user',
+    done       INTEGER NOT NULL DEFAULT 0,
+    result     TEXT,
+    marks      INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
@@ -54,6 +57,15 @@ CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
 );
+
+CREATE TABLE IF NOT EXISTS notification_log (
+    id      INTEGER PRIMARY KEY,
+    kind    TEXT NOT NULL,
+    ref_id  INTEGER NOT NULL DEFAULT 0,
+    day     TEXT NOT NULL,
+    sent_at TEXT NOT NULL,
+    UNIQUE (kind, ref_id, day)
+);
 """
 
 
@@ -62,7 +74,22 @@ def _connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
+    _migrate(conn)
     return conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Create tables and add columns that older databases are missing."""
+    conn.executescript(SCHEMA)
+    for statement in (
+        "ALTER TABLE exams ADD COLUMN done INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE exams ADD COLUMN result TEXT",
+        "ALTER TABLE exams ADD COLUMN marks INTEGER",
+    ):
+        try:
+            conn.execute(statement)
+        except sqlite3.OperationalError:
+            pass  # column already exists
 
 
 def _query(sql: str, params: tuple = ()) -> list[dict]:
@@ -166,6 +193,58 @@ def next_exam() -> dict | None:
 
 def delete_exam(exam_id: int) -> None:
     _execute("DELETE FROM exams WHERE id = ?", (exam_id,))
+
+
+def set_exam_result(exam_id: int, result: str, marks: int | None) -> None:
+    _execute(
+        "UPDATE exams SET done = 1, result = ?, marks = ? WHERE id = ?",
+        (result, marks, exam_id),
+    )
+
+
+def completed_exam_count() -> int:
+    rows = _query("SELECT COUNT(*) AS n FROM exams WHERE done = 1")
+    return rows[0]["n"] if rows else 0
+
+
+# -------------------------------------------------------------------- rewards
+def add_xp(amount: int) -> tuple[int, bool]:
+    """Add XP and return (total, leveled_up). One level per 100 XP."""
+    current = int(get_setting("xp", "0") or 0)
+    new_total = current + amount
+    set_setting("xp", str(new_total))
+    leveled = level_for(new_total) > level_for(current)
+    return new_total, leveled
+
+
+def level_for(xp: int) -> int:
+    return xp // 100 + 1
+
+
+def level_progress() -> dict:
+    xp = int(get_setting("xp", "0") or 0)
+    level = level_for(xp)
+    return {
+        "xp": xp,
+        "level": level,
+        "into_level": xp % 100,
+        "next_level_in": 100 - (xp % 100),
+    }
+
+
+# ---------------------------------------------------------- notification log
+def mark_notification(kind: str, ref_id: int, day: str) -> bool:
+    """Record a notification for (kind, ref, day). True if it was new."""
+    with _lock:
+        with _connect() as conn:
+            conn.executescript(SCHEMA)
+            cursor = conn.execute(
+                "INSERT OR IGNORE INTO notification_log (kind, ref_id, day, sent_at) "
+                "VALUES (?, ?, ?, ?)",
+                (kind, ref_id, day, now_str()),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
 
 
 # ------------------------------------------------------------------ subjects
@@ -285,7 +364,7 @@ def reset_all() -> None:
             conn.executescript(
                 "DROP TABLE IF EXISTS tasks; DROP TABLE IF EXISTS exams; "
                 "DROP TABLE IF EXISTS plans; DROP TABLE IF EXISTS subjects; "
-                "DROP TABLE IF EXISTS settings;"
+                "DROP TABLE IF EXISTS settings; DROP TABLE IF EXISTS notification_log;"
             )
             conn.executescript(SCHEMA)
             conn.commit()

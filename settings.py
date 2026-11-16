@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QHBoxLayout, QMessageBox, QSpinBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QMessageBox, QSpinBox, QVBoxLayout, QWidget
 
 import store
 from web.ai_core import PRIMARY_MODEL
-from ui_theme import (BG, MUTED, TEXT, button, label, line_edit, page_header,
+from ui_theme import (BG, BODY, MUTED, TEXT, button, label, line_edit, page_header,
                       page_style, small_label, title_label)
 
 
@@ -59,6 +59,14 @@ class SettingsPage(QWidget):
         habits_layout.addLayout(goal_row)
         habits_layout.addWidget(small_label(
             "Used as the default 'study time per day' when the AI builds a plan."))
+
+        self.tray_checkbox = QCheckBox("Keep running in the background when I close the window")
+        self.tray_checkbox.setChecked(store.get_setting("minimize_to_tray", "1") == "1")
+        self.tray_checkbox.setStyleSheet(
+            f"QCheckBox {{ color: {BODY}; font-size: 13px; spacing: 8px; background: transparent; }}")
+        habits_layout.addWidget(self.tray_checkbox)
+        habits_layout.addWidget(small_label(
+            "Recommended — reminders and toasts keep working while the app is closed to the tray."))
         root.addWidget(habits)
 
         # AI card
@@ -85,6 +93,7 @@ class SettingsPage(QWidget):
         name = self.name_input.text().strip() or "Student"
         store.set_setting("student_name", name)
         store.set_setting("daily_goal_minutes", str(self.goal_input.value()))
+        store.set_setting("minimize_to_tray", "1" if self.tray_checkbox.isChecked() else "0")
         self.saved_note.setText("Saved ✓")
 
     def _reset(self) -> None:

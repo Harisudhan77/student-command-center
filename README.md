@@ -43,6 +43,21 @@ python main.py
 Everything is stored in **SQLite** (`data/planner.db`) via `store.py`, so your
 tasks and exams survive restarts. Delete the file to start fresh.
 
+## Notifications & rewards
+
+The app lives in the **system tray** (robot icon). Closing the window keeps it
+running in the background (toggle in Settings) so reminders keep firing:
+
+- 🎉 **Task completed** → praise toast, +15 XP, streak celebrations, level-ups
+  (one level per 100 XP — see your Level on the Progress page)
+- 🎓 **Exam day evening + morning after** → "How did it go?" — log the result on
+  the Exams page for +50 XP
+- 📚 **Upcoming exams** → toasts at 3 days, 1 day and the exam morning
+- 📋 **Tasks due today / overdue** → one daily digest each
+
+Every reminder fires at most once per day per item (tracked in
+`notification_log`), so it never spams you.
+
 ## Study Planner
 
 1. Pick the exam subject, plan length (days) and study minutes per day.

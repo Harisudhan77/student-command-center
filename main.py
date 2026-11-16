@@ -22,6 +22,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QTimer
 
+import notify
+import reminders
+import store
+
 import store
 from dashboard import DashboardPage
 from exams import ExamsPage
@@ -36,7 +40,38 @@ from ui_theme import ACCENT, BG, BODY, BORDER, FAINT, MUTED, SIDEBAR, TEXT
 app = QApplication(sys.argv)
 app.setWindowIcon(QIcon(str(Path(__file__).resolve().parent / "assets" / "app_icon.png")))
 
-main_window = QMainWindow()
+
+class MainWindow(QMainWindow):
+    """QMainWindow that minimizes to the system tray instead of quitting."""
+
+    def __init__(self):
+        super().__init__()
+        self._quit_requested = False
+        self._notifier = None
+
+    def request_quit(self) -> None:
+        self._quit_requested = True
+        self.close()
+
+    def closeEvent(self, event) -> None:
+        keep_running = (
+            not self._quit_requested
+            and self._notifier is not None
+            and store.get_setting("minimize_to_tray", "1") == "1"
+        )
+        if keep_running:
+            event.ignore()
+            self.hide()
+            self._notifier.notify(
+                "Student Command Centre",
+                "Still running in the background — reminders stay active.\n"
+                "Use the tray icon to reopen or quit.",
+            )
+            return
+        event.accept()
+
+
+main_window = MainWindow()
 main_window.setWindowTitle("Student Command Center")
 main_window.resize(1080, 700)
 main_window.setMinimumSize(960, 620)
@@ -201,5 +236,20 @@ def _start() -> None:
     splash.finish(main_window)
 
 QTimer.singleShot(1200, _start)  # let the splash breathe for a moment
+
+# --------------------------------------------------------- tray + reminders
+notifier = notify.init_notifier(main_window)
+main_window._notifier = notifier
+
+checker = reminders.ReminderChecker()
+
+def _check_reminders() -> None:
+    for title, message in checker.run_once(QDateTime.currentDateTime().toPython()):
+        notifier.notify(title, message)
+
+reminder_timer = QTimer(main_window)
+reminder_timer.timeout.connect(_check_reminders)
+reminder_timer.start(60_000)          # check every minute
+QTimer.singleShot(15_000, _check_reminders)  # first nudge shortly after startup
 
 sys.exit(app.exec())

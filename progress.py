@@ -40,6 +40,10 @@ class ProgressPage(QWidget):
         self.pending_card, self.pending_value = self._stat_card(stats_row, "PENDING")
         self.streak_card, self.streak_value = self._stat_card(stats_row, "STREAK")
         self.minutes_card, self.minutes_value = self._stat_card(stats_row, "MINUTES TODAY")
+        self.level_card, self.level_value = self._stat_card(stats_row, "LEVEL")
+        self.level_xp = small_label("", FAINT)
+        self.level_card.layout().addWidget(self.level_xp)
+        self.level_card.layout().addStretch()
         root.addLayout(stats_row)
 
         # weekly chart
@@ -93,6 +97,9 @@ class ProgressPage(QWidget):
         self.pending_value.setText(str(store.count_tasks(done=False)))
         self.streak_value.setText(f"{store.study_streak()} 🔥")
         self.minutes_value.setText(str(store.minutes_completed_on(store.today())))
+        level_info = store.level_progress()
+        self.level_value.setText(str(level_info["level"]))
+        self.level_xp.setText(f"{level_info['xp']} XP · {level_info['next_level_in']} to next")
 
         counts = store.weekly_completed_counts()
         peak = max(counts) or 1

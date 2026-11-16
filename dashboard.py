@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 )
 
 import store
+import rewards
 from ui_theme import (ACCENT, ACCENT_HOVER, BG, BODY, BORDER, CARD, DEEP, MUTED,
                       TEXT, WEEKDAYS, card, empty_note, label, page_header, page_style,
                       small_label, title_label, v_bar)
@@ -253,4 +254,5 @@ class DashboardPage(QWidget):
     def _complete(self, task: dict, checked: bool) -> None:
         if checked:
             store.set_task_done(task["id"], True)
+            rewards.on_task_completed(task)
             self.refresh()
