@@ -16,7 +16,6 @@ import sys
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
-    QDialog,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -99,11 +98,13 @@ STARTER_PROMPTS = [
 ]
 
 
-class StudyBuddyDialog(QDialog):
+class StudyBuddyWidget(QWidget):
+    """The chat UI as an embeddable page (lives inside the main window)."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Study Buddy AI")
-        self.resize(860, 680)
+        self.setObjectName("buddyPage")
+        self.setStyleSheet("QWidget#buddyPage { background-color: #1D2130; }")
         self.setMinimumSize(560, 440)
 
         self.history: list[dict] = []
@@ -429,14 +430,17 @@ class StudyBuddyDialog(QDialog):
             self._worker.deleteLater()
             self._worker = None
 
-    def closeEvent(self, event) -> None:
+    def shutdown(self) -> None:
+        """Wait briefly for any in-flight request - call on app exit."""
         if self._worker is not None:
             self._worker.wait(2000)
-        super().closeEvent(event)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    dialog = StudyBuddyDialog()
-    dialog.show()
+    widget = StudyBuddyWidget()
+    widget.resize(860, 680)
+    widget.setWindowTitle("Study Buddy AI")
+    widget.show()
+    app.aboutToQuit.connect(widget.shutdown)
     sys.exit(app.exec())
