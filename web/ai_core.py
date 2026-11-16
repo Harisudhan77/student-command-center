@@ -16,6 +16,7 @@ Optional .env overrides:
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -28,7 +29,18 @@ except ImportError:
     _GROQ_IMPORT_OK = False
 
 APP_DIR = Path(__file__).resolve().parent
-ENV_CANDIDATES = (APP_DIR.parent / ".env", APP_DIR / ".env")
+
+
+def _env_candidates() -> list[Path]:
+    """Places to look for .env — beside the exe first when frozen."""
+    candidates: list[Path] = []
+    if getattr(sys, "frozen", False):
+        candidates.append(Path(sys.executable).resolve().parent / ".env")
+    candidates += [APP_DIR.parent / ".env", APP_DIR / ".env"]
+    return candidates
+
+
+ENV_CANDIDATES = _env_candidates()
 
 PRIMARY_MODEL = "openai/gpt-oss-120b"
 FALLBACK_MODEL = "openai/gpt-oss-20b"

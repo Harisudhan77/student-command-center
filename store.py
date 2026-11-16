@@ -15,7 +15,9 @@ from contextlib import closing
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent / "data" / "planner.db"
+from app_paths import data_dir
+
+DB_PATH = data_dir() / "data" / "planner.db"
 _lock = threading.Lock()
 
 SCHEMA = """

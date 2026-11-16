@@ -11,6 +11,11 @@ venv/
 # Local app data (planner database, chat logs)
 data/
 
+# PyInstaller build output
+build/
+dist/
+*.spec
+
 # Vercel / deploy
 .vercel/
 

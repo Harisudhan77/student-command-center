@@ -25,8 +25,7 @@ from PySide6.QtCore import Qt, QTimer
 import notify
 import reminders
 import store
-
-import store
+from app_paths import base_dir
 from dashboard import DashboardPage
 from exams import ExamsPage
 from planner import PlannerPage
@@ -38,7 +37,7 @@ from tasks import TasksPage
 from ui_theme import ACCENT, BG, BODY, BORDER, FAINT, MUTED, SIDEBAR, TEXT
 
 app = QApplication(sys.argv)
-app.setWindowIcon(QIcon(str(Path(__file__).resolve().parent / "assets" / "app_icon.png")))
+app.setWindowIcon(QIcon(str(base_dir() / "assets" / "app_icon.png")))
 
 
 class MainWindow(QMainWindow):
@@ -221,7 +220,7 @@ main_layout.addWidget(stack, 1)
 app.aboutToQuit.connect(pages["ai_btn"].shutdown)
 
 # ------------------------------------------------------------- start
-ASSETS = Path(__file__).resolve().parent / "assets"
+ASSETS = base_dir() / "assets"
 splash_pixmap = QPixmap(str(ASSETS / "logo_lockup.png")).scaledToWidth(520, Qt.SmoothTransformation)
 splash = QSplashScreen(splash_pixmap)
 splash.showMessage("Loading your study hub…", Qt.AlignHCenter | Qt.AlignBottom, QColor("#94A3B8"))
