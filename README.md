@@ -1,5 +1,9 @@
 # Student Command Center
 
+<p align="center">
+  <img src="assets/logo_lockup.png" width="360" alt="Student Command Centre">
+</p>
+
 A PySide6 desktop app for tracking exams, tasks and study progress — with an
 AI tutor and an AI study planner powered by **GPT-OSS on Groq**.
 
