@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from contextlib import closing
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -94,14 +95,14 @@ def _migrate(conn: sqlite3.Connection) -> None:
 
 def _query(sql: str, params: tuple = ()) -> list[dict]:
     with _lock:
-        with _connect() as conn:
+        with closing(_connect()) as conn:
             conn.executescript(SCHEMA)
             return [dict(row) for row in conn.execute(sql, params).fetchall()]
 
 
 def _execute(sql: str, params: tuple = ()) -> int:
     with _lock:
-        with _connect() as conn:
+        with closing(_connect()) as conn:
             conn.executescript(SCHEMA)
             cursor = conn.execute(sql, params)
             conn.commit()
@@ -236,7 +237,7 @@ def level_progress() -> dict:
 def mark_notification(kind: str, ref_id: int, day: str) -> bool:
     """Record a notification for (kind, ref, day). True if it was new."""
     with _lock:
-        with _connect() as conn:
+        with closing(_connect()) as conn:
             conn.executescript(SCHEMA)
             cursor = conn.execute(
                 "INSERT OR IGNORE INTO notification_log (kind, ref_id, day, sent_at) "
@@ -360,7 +361,7 @@ def study_streak() -> int:
 # -------------------------------------------------------------------- danger
 def reset_all() -> None:
     with _lock:
-        with _connect() as conn:
+        with closing(_connect()) as conn:
             conn.executescript(
                 "DROP TABLE IF EXISTS tasks; DROP TABLE IF EXISTS exams; "
                 "DROP TABLE IF EXISTS plans; DROP TABLE IF EXISTS subjects; "

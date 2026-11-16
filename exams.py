@@ -6,9 +6,11 @@ from datetime import datetime
 
 from PySide6.QtCore import QDateTime, Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDateTimeEdit,
     QDialog,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -20,6 +22,7 @@ from PySide6.QtWidgets import (
 
 import rewards
 import store
+import timetable
 from ui_theme import (ACCENT, BG, BODY, BORDER, DEEP, FAINT, MUTED, TEXT,
                       button, empty_note, label, page_header, page_style,
                       small_label, title_label)
@@ -67,10 +70,16 @@ class ExamsPage(QWidget):
 
         add_btn = button("Add exam", "primary")
         add_btn.clicked.connect(self._add_exam)
+        self.import_btn = button("📄 Import timetable PDF", height=34)
+        self.import_btn.clicked.connect(self._import_pdf)
         add_row.addWidget(self.subject_input, 1)
         add_row.addWidget(self.when_input)
         add_row.addWidget(add_btn)
+        add_row.addWidget(self.import_btn)
         root.addWidget(add_card)
+
+        self.import_status = label("", 12, MUTED)
+        root.addWidget(self.import_status)
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -102,6 +111,43 @@ class ExamsPage(QWidget):
         dialog = _ResultDialog(self, exam)
         if dialog.exec():
             self.refresh()
+
+    # ------------------------------------------------------------- PDF import
+    def _import_pdf(self) -> None:
+        if getattr(self, "_worker", None) is not None:
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Choose an exam timetable PDF", "", "PDF files (*.pdf)")
+        if not path:
+            return
+        self.import_btn.setEnabled(False)
+        self.import_status.setText("Reading the timetable… this usually takes 10–20 seconds.")
+        self._worker = timetable.TimetableWorker(path, parent=self)
+        self._worker.done.connect(self._on_exams_found)
+        self._worker.failed.connect(self._on_import_fail)
+        self._worker.finished.connect(self._cleanup_import)
+        self._worker.start()
+
+    def _on_exams_found(self, exams: list) -> None:
+        self.import_status.setText("")
+        if not exams:
+            self.import_status.setText(
+                "No new exams were found in that PDF (they may already be added).")
+            return
+        dialog = _ImportPreviewDialog(self, exams)
+        if dialog.exec():
+            added = dialog.added_count
+            self.import_status.setText(f"✅ Added {added} exam(s) from the timetable.")
+            self.refresh()
+
+    def _on_import_fail(self, message: str) -> None:
+        self.import_status.setText(f"⚠️  {message}")
+
+    def _cleanup_import(self) -> None:
+        if getattr(self, "_worker", None) is not None:
+            self._worker.deleteLater()
+            self._worker = None
+        self.import_btn.setEnabled(True)
 
     # -------------------------------------------------------------- refresh
     def showEvent(self, event) -> None:
@@ -250,4 +296,49 @@ class _ResultDialog(QDialog):
         marks = int(marks_text) if marks_text.isdigit() else None
         store.set_exam_result(self.exam["id"], self._mood, marks)
         rewards.on_exam_completed(self.exam, self._mood)
+        self.accept()
+
+
+class _ImportPreviewDialog(QDialog):
+    """Shows the exams found in the PDF; nothing is saved until confirmed."""
+
+    def __init__(self, parent, exams: list):
+        super().__init__(parent)
+        self.exams = exams
+        self.added_count = 0
+        self.setWindowTitle("Exams found in your timetable")
+        self.setFixedSize(440, 140 + 44 * min(len(exams), 8))
+        self.setStyleSheet(f"background-color: {DEEP};")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(10)
+
+        title = QLabel(f"Found {len(exams)} exam(s) — untick anything wrong:")
+        title.setStyleSheet(f"color: {TEXT}; font-size: 14px; font-weight: bold;")
+        title.setWordWrap(True)
+        layout.addWidget(title)
+
+        self.checkboxes: list[QCheckBox] = []
+        for exam in exams:
+            when = store.parse_dt(exam["occurs_at"])
+            nice = when.strftime("%a %d %b %Y · %I:%M %p") if when else exam["occurs_at"]
+            box = QCheckBox(f"{exam['subject']}   —   {nice}")
+            box.setChecked(True)
+            box.setStyleSheet(
+                f"QCheckBox {{ color: {BODY}; font-size: 13px; spacing: 10px; background: transparent; }}")
+            self.checkboxes.append(box)
+            layout.addWidget(box)
+
+        layout.addStretch()
+        add_btn = button("Add selected exams", "primary", height=40)
+        add_btn.clicked.connect(self._save)
+        layout.addWidget(add_btn)
+
+    def _save(self) -> None:
+        for box, exam in zip(self.checkboxes, self.exams):
+            if box.isChecked():
+                store.add_exam(exam["subject"], exam["occurs_at"], created_by="pdf")
+                store.add_subject(exam["subject"])
+                self.added_count += 1
         self.accept()

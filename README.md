@@ -34,7 +34,17 @@ python main.py
 | 📊 Dashboard | Upcoming exams, tasks completed, pending tasks, exam countdown, weekly activity |
 | 📋 Tasks | Add / complete / delete tasks, filter all-pending-done |
 | 📚 Subjects | Manage subjects, see done/pending counts and next exam per subject |
-| 🎯 Exams | Add exams with date & time, live countdowns |
+| 🎯 Exams | Add exams with date & time, live countdowns, or **import a timetable PDF** |
+
+## Import an exam timetable PDF
+
+On the Exams page: **📄 Import timetable PDF** → pick the file → the app reads
+the text (`pypdf`), GPT-OSS extracts each exam (resolving dates like "MON 24 NOV"
+against today's date), and junk rows (headers, rules, seating notes) are ignored.
+
+You get a preview with checkboxes — **nothing is saved until you confirm**.
+Already-added exams are filtered out automatically. Scanned photo PDFs without
+a text layer are rejected with a clear message (they need OCR).
 | 📈 Progress | Streak, minutes today, weekly chart, per-subject progress bars |
 | 🤖 Study Buddy AI | Chat tutor (GPT-OSS via Groq), streaming replies |
 | 📆 Study Planner | AI builds a day-by-day study plan → you approve → it becomes real tasks |
@@ -86,6 +96,7 @@ ui_theme.py        shared colors/styles
 dashboard.py       📊   tasks.py        📋   subjects.py   📚
 exams.py           🎯   progress.py     📈   settings.py   ⚙️
 planner.py         📆 AI study plan generator
+timetable.py       📄 exam timetable PDF import
 study_buddy.py     🤖 chat page (embeddable widget)
 web/               FastAPI web version (Vercel)
 ```
