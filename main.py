@@ -7,19 +7,20 @@ QStackedWidget. Data is stored with store.py (SQLite in data/planner.db).
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPixmap, QColor
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QPushButton,
+    QSplashScreen,
     QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 import store
 from dashboard import DashboardPage
@@ -185,8 +186,20 @@ main_layout.addWidget(stack, 1)
 app.aboutToQuit.connect(pages["ai_btn"].shutdown)
 
 # ------------------------------------------------------------- start
+ASSETS = Path(__file__).resolve().parent / "assets"
+splash_pixmap = QPixmap(str(ASSETS / "logo_lockup.png")).scaledToWidth(520, Qt.SmoothTransformation)
+splash = QSplashScreen(splash_pixmap)
+splash.showMessage("Loading your study hub…", Qt.AlignHCenter | Qt.AlignBottom, QColor("#94A3B8"))
+splash.show()
+app.processEvents()
+
 store.get_setting("student_name")  # touch the database so data/planner.db exists up front
 activate("dashboard_btn")
-main_window.show()
+
+def _start() -> None:
+    main_window.show()
+    splash.finish(main_window)
+
+QTimer.singleShot(1200, _start)  # let the splash breathe for a moment
 
 sys.exit(app.exec())
