@@ -1,0 +1,35 @@
+Student Command Centre — Software License
+
+Copyright (c) 2026 Harisudhan77. All Rights Reserved.
+
+1. GRANT OF LICENSE
+   Purchasers of the distributed application binary obtain a personal,
+   non-transferable license to install and use Student Command Centre on
+   their own computers for personal, educational use.
+
+2. RESTRICTIONS
+   You may NOT:
+   - redistribute, resell, sublicense or share the application or its
+     installer with others;
+   - modify, reverse engineer or decompile the distributed binary with the
+     intent to redistribute a derivative product;
+   - use the application commercially without a separate agreement.
+
+3. SOURCE CODE
+   The source code in this repository is provided for transparency and
+   personal use. It may be viewed and forked for learning purposes, but
+   binaries built from it may not be sold or distributed commercially
+   without written permission from the author.
+
+4. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+   IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY ARISING FROM THE USE OF THE SOFTWARE.
+
+5. THIRD-PARTY SERVICES
+   AI features use the Groq API under the user's own free API key. Usage of
+   that key is subject to Groq's terms of service.
+
+For licensing questions, contact the author via GitHub.

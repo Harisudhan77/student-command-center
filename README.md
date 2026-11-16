@@ -1,108 +1,180 @@
-# Student Command Center
+<div align="center">
 
-<p align="center">
-  <img src="assets/logo_lockup.png" width="360" alt="Student Command Centre">
-</p>
+<img src="assets/logo_lockup.png" width="320" alt="Student Command Centre">
 
-A PySide6 desktop app for tracking exams, tasks and study progress — with an
-AI tutor and an AI study planner powered by **GPT-OSS on Groq**.
+# Student Command Centre
 
-## Setup
+**Your study hub — with an AI tutor, an AI study planner, and a memory.**
 
-```powershell
+[![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![GUI](https://img.shields.io/badge/GUI-PySide6-41CD52?logo=qt&logoColor=white)](https://doc.qt.io/qtforpython/)
+[![AI](https://img.shields.io/badge/AI-GPT--OSS%20via%20Groq-F55036?logo=nvidia&logoColor=white)](https://console.groq.com/docs/models)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D4?logo=windows11&logoColor=white)](#)
+[![Release](https://img.shields.io/github/v/tag/Harisudhan77/student-command-center?label=release)](https://github.com/Harisudhan77/student-command-center/releases)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](LICENSE)
+
+A fast, dark, offline-first desktop app that tracks your exams, tasks and
+subjects — and adds **GPT-OSS intelligence** on top: a tutor that explains
+anything, a planner that turns "I have an exam" into a day-by-day study plan,
+timetable PDFs that import themselves, and a reward system that keeps you coming
+back.
+
+</div>
+
+---
+
+## ✨ Features
+
+| | Feature | What it does |
+|---|---|---|
+| 📊 | **Dashboard** | Upcoming exams, tasks completed, pending tasks, exam countdown, weekly activity |
+| 📋 | **Tasks** | Add, complete and delete tasks with due dates; filter all / pending / done |
+| 📚 | **Subjects** | Manage subjects; see done/pending counts and each subject's next exam |
+| 🎯 | **Exams** | Live countdowns ("TODAY!", "tomorrow", "N days") and result logging |
+| 📈 | **Progress** | Study streak 🔥, minutes today, weekly chart, per-subject progress bars |
+| 🤖 | **Study Buddy AI** | A patient tutor that explains in short steps — powered by **GPT-OSS 120B on Groq** |
+| 📆 | **Study Planner** | AI builds a day-by-day plan → you preview it → approve → it becomes real tasks |
+| 📄 | **Timetable import** | Drop in your exam timetable PDF; exams are extracted and added automatically |
+| 🔔 | **Smart notifications** | System-tray toasts: exam warnings, evening check-ins, due-task digests |
+| 🏆 | **XP & rewards** | +15 XP per task, +50 per exam, levels, streak celebrations |
+| ⚙️ | **Settings** | Your name, daily study goal, background mode, one-click data reset |
+
+Everything is stored locally in **SQLite** — your data never leaves your machine.
+
+## 📸 Screenshots
+
+| Dashboard | Study Planner |
+|---|---|
+| ![Dashboard](docs/screenshots/01_dashboard.png) | ![Planner](docs/screenshots/06_planner.png) |
+
+| Tasks | Progress |
+|---|---|
+| ![Tasks](docs/screenshots/02_tasks.png) | ![Progress](docs/screenshots/05_progress.png) |
+
+## 🚀 Getting started
+
+### From the packaged build (recommended)
+
+1. Download `StudentCommandCentre-windows-x64.zip` from
+   [**Releases**](https://github.com/Harisudhan77/student-command-center/releases)
+2. Unzip and run `StudentCommandCentre.exe` — no installation needed
+3. For the AI features, grab a **free** API key at
+   [console.groq.com/keys](https://console.groq.com/keys) and put it in a
+   `.env` file next to the exe:
+   ```
+   GROQ_API_KEY=gsk_your_key_here
+   ```
+
+> Windows SmartScreen may show an "unknown publisher" warning for unsigned
+> builds — choose *More info → Run anyway*.
+
+### From source
+
+```bash
+git clone https://github.com/Harisudhan77/student-command-center.git
+cd student-command-center
 pip install -r requirements.txt
-```
-
-Create a file named `.env` in this folder (next to `main.py`) with your Groq key:
-
-```
-GROQ_API_KEY=gsk_your_key_here
-```
-
-Get a free key at https://console.groq.com/keys
-
-## Run
-
-```powershell
 python main.py
 ```
 
-## The menus (all inside the one main window)
+## 🧠 How the AI features work
 
-| Menu | What it does |
-|---|---|
-| 📊 Dashboard | Upcoming exams, tasks completed, pending tasks, exam countdown, weekly activity |
-| 📋 Tasks | Add / complete / delete tasks, filter all-pending-done |
-| 📚 Subjects | Manage subjects, see done/pending counts and next exam per subject |
-| 🎯 Exams | Add exams with date & time, live countdowns, or **import a timetable PDF** |
+**Study Buddy** answers in short numbered steps with a worked example, gives
+hints before full solutions, and keeps answers compact. Replies stream in live.
 
-## Import an exam timetable PDF
+**The Study Planner** asks for the exam subject, how many days you have and how
+long you study per day — then returns a structured JSON plan that the app
+*validates* (day offsets clamped, times normalised, minutes capped) before
+showing you a preview. **Nothing is saved until you approve it.**
 
-On the Exams page: **📄 Import timetable PDF** → pick the file → the app reads
-the text (`pypdf`), GPT-OSS extracts each exam (resolving dates like "MON 24 NOV"
-against today's date), and junk rows (headers, rules, seating notes) are ignored.
+**Timetable import** reads your PDF, resolves dates like `MON 25 NOV` against
+today's date, drops junk rows, de-duplicates against exams you already have,
+and shows a confirmation checklist.
 
-You get a preview with checkboxes — **nothing is saved until you confirm**.
-Already-added exams are filtered out automatically. Scanned photo PDFs without
-a text layer are rejected with a clear message (they need OCR).
-| 📈 Progress | Streak, minutes today, weekly chart, per-subject progress bars |
-| 🤖 Study Buddy AI | Chat tutor (GPT-OSS via Groq), streaming replies |
-| 📆 Study Planner | AI builds a day-by-day study plan → you approve → it becomes real tasks |
-| ⚙️ Settings | Your name, daily study goal, reset-all-data |
+The model falls back from `gpt-oss-120b` to `gpt-oss-20b` automatically if the
+primary model is unavailable.
 
-Everything is stored in **SQLite** (`data/planner.db`) via `store.py`, so your
-tasks and exams survive restarts. Delete the file to start fresh.
+## 🔔 Notifications & rewards
 
-## Notifications & rewards
+The app lives in the **system tray** — closing the window keeps it running in
+the background (toggle in Settings) so reminders keep firing:
 
-The app lives in the **system tray** (robot icon). Closing the window keeps it
-running in the background (toggle in Settings) so reminders keep firing:
+- 🎉 task completed → praise + **+15 XP**
+- 🎓 exam day evening & morning after → *"How did it go?"* → **+50 XP**
+- 📚 upcoming exams → at 3 days, 1 day and the exam morning
+- 📋 tasks due today / overdue → one digest per day
+- 🔥 streak milestones and 🚀 level-ups
 
-- 🎉 **Task completed** → praise toast, +15 XP, streak celebrations, level-ups
-  (one level per 100 XP — see your Level on the Progress page)
-- 🎓 **Exam day evening + morning after** → "How did it go?" — log the result on
-  the Exams page for +50 XP
-- 📚 **Upcoming exams** → toasts at 3 days, 1 day and the exam morning
-- 📋 **Tasks due today / overdue** → one daily digest each
+Every reminder fires at most once per item per day — never spam.
 
-Every reminder fires at most once per day per item (tracked in
-`notification_log`), so it never spams you.
+## 🌐 Web version
 
-## Study Planner
+The same AI brain runs in your browser via a FastAPI backend:
 
-1. Pick the exam subject, plan length (days) and study minutes per day.
-2. Click **Generate plan** — the AI returns a day-by-day plan (JSON, validated by the app).
-3. Review the preview, then **Add this plan to my tasks** — the blocks become real
-   tasks on your dashboard, tagged with the subject.
+**[student-command-center-ten.vercel.app](https://student-command-center-ten.vercel.app)**
 
-Nothing is saved until you approve. The model's output is clamped and validated
-(day offsets in range, sane times, minutes 15–180) before it touches your data.
+Source lives in [`web/`](web/) (Groq key configured as an environment variable).
 
-## Web version (`web/`)
-
-The same Study Buddy brain runs in a browser, deployed on **Vercel**:
-`web/ai_core.py` is shared by the desktop app and `web/app.py` (FastAPI).
-
-Deploy settings: Vercel project with **Root Directory = `web`** and
-`GROQ_API_KEY` in the project's environment variables. Optionally set
-`STUDY_BUDDY_WEB_CODE` to require an access code with every request.
-
-## Project layout
+## 🗂️ Project structure
 
 ```
 main.py            window shell: sidebar + page stack
-store.py           SQLite storage (tasks, exams, subjects, plans, settings)
-ui_theme.py        shared colors/styles
-dashboard.py       📊   tasks.py        📋   subjects.py   📚
-exams.py           🎯   progress.py     📈   settings.py   ⚙️
-planner.py         📆 AI study plan generator
-timetable.py       📄 exam timetable PDF import
-study_buddy.py     🤖 chat page (embeddable widget)
+store.py           SQLite storage (tasks, exams, subjects, plans, XP, settings)
+ui_theme.py        shared colors & styles
+dashboard.py  tasks.py  subjects.py  exams.py
+progress.py   planner.py  settings.py
+study_buddy.py     chat page (embeddable widget)
+timetable.py       exam timetable PDF import
+notify.py          system-tray toasts
+rewards.py         XP, levels and praise
+reminders.py       scheduled reminder logic
 web/               FastAPI web version (Vercel)
+tests/             logic tests (store, reminders, AI parsing)
 ```
 
-## Notes
+## 🧪 Tests
 
-- The `.venv` folder in the parent directory was created on Linux and will not
-  work on Windows. Delete it and run `python -m venv .venv` if you want a local env.
-- Never commit `.env` — it is already listed in the repo's `.gitignore`.
+```bash
+python tests/test_store.py
+python tests/test_rewards_and_reminders.py
+python tests/test_ai_parsing.py
+```
+
+## 📦 Building the .exe
+
+```bash
+pip install pyinstaller
+python -m PyInstaller --noconfirm --clean --onefile --windowed ^
+    --name StudentCommandCentre --icon assets/app_icon.ico ^
+    --add-data "assets/app_icon.png;assets" ^
+    --add-data "assets/logo_lockup.png;assets" main.py
+```
+
+## ⚙️ Configuration
+
+All configuration is optional — put these in `.env`:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GROQ_API_KEY` | — | Required for AI features ([free key](https://console.groq.com/keys)) |
+| `STUDY_BUDDY_MODEL` | `openai/gpt-oss-120b` | Swap the model (e.g. `openai/gpt-oss-20b`) |
+| `STUDY_BUDDY_REASONING` | `low` | Reasoning effort: `low` / `medium` / `high` |
+| `STUDY_BUDDY_WEB_CODE` | off | Optional access code protecting the web version |
+
+## 🗺️ Roadmap
+
+- [ ] Exam timetable image (photo) import via OCR
+- [ ] Plan editing after approval
+- [ ] Cloud sync between devices
+- [ ] Weekly email/push digest
+
+## 📄 License
+
+Proprietary — see [LICENSE](LICENSE). The packaged app is available for
+purchase; the source is shared for transparency and personal use.
+
+---
+
+<div align="center">
+Built with PySide6, SQLite and GPT-OSS on Groq.
+</div>
