@@ -45,6 +45,12 @@ def _check_access_code(provided: str) -> None:
         raise HTTPException(status_code=401, detail="Wrong access code.")
 
 
+@app.get("/favicon.ico")
+@app.get("/favicon.png")
+def favicon():
+    return FileResponse(WEB_DIR / "favicon.png", media_type="image/png")
+
+
 @app.get("/")
 def home():
     if INDEX_FILE.exists():

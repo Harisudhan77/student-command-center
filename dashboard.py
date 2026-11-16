@@ -107,15 +107,6 @@ class DashboardPage(QWidget):
         header = QHBoxLayout()
         header.addWidget(label("UPCOMING EXAMS !", 12, MUTED, bold=True))
         header.addStretch()
-        add_exam_btn = QPushButton("+")
-        add_exam_btn.setFixedSize(34, 34)
-        add_exam_btn.setStyleSheet(
-            f"QPushButton {{ color: white; background-color: {ACCENT}; border: none; "
-            f"border-radius: 17px; font-size: 20px; font-weight: bold; }}"
-            f"QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}"
-        )
-        add_exam_btn.clicked.connect(lambda: self._open_add("exam"))
-        header.addWidget(add_exam_btn)
         exam_layout.addLayout(header)
 
         self.exam_no = label("0", 40, TEXT, bold=True)
@@ -130,15 +121,6 @@ class DashboardPage(QWidget):
         tasks_header = QHBoxLayout()
         tasks_header.addWidget(label("TASKS COMPLETED", 12, MUTED, bold=True))
         tasks_header.addStretch()
-        add_task_btn = QPushButton("+")
-        add_task_btn.setFixedSize(34, 34)
-        add_task_btn.setStyleSheet(
-            f"QPushButton {{ color: white; background-color: {ACCENT}; border: none; "
-            f"border-radius: 17px; font-size: 20px; font-weight: bold; }}"
-            f"QPushButton:hover {{ background-color: {ACCENT_HOVER}; }}"
-        )
-        add_task_btn.clicked.connect(lambda: self._open_add("task"))
-        tasks_header.addWidget(add_task_btn)
         tasks_layout.addLayout(tasks_header)
 
         self.tasks_count = label("0", 40, TEXT, bold=True)

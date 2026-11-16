@@ -5,7 +5,9 @@ QStackedWidget. Data is stored with store.py (SQLite in data/planner.db).
 """
 
 import sys
+from pathlib import Path
 
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -31,6 +33,7 @@ from tasks import TasksPage
 from ui_theme import ACCENT, BG, BODY, BORDER, FAINT, MUTED, SIDEBAR, TEXT
 
 app = QApplication(sys.argv)
+app.setWindowIcon(QIcon(str(Path(__file__).resolve().parent / "assets" / "app_icon.png")))
 
 main_window = QMainWindow()
 main_window.setWindowTitle("Student Command Center")
