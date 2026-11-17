@@ -2,195 +2,649 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D2130">
 <link rel="icon" type="image/png" href="/favicon.png">
-<title>Study Buddy AI</title>
+<title>Student Command Center</title>
 <style>
   :root {
     --bg: #1D2130; --panel: #172338; --panel-border: #2B3A52;
     --deep: #0B1220; --accent: #6D5AE6; --accent-hover: #8170F0;
-    --text: #E2E8F0; --muted: #94A3B8; --faint: #64748B;
-    --error-bg: #2A1414; --error-text: #FCA5A5;
+    --text: #E2E8F0; --body: #CBD5E1; --muted: #94A3B8; --faint: #64748B;
+    --error-bg: #2A1414; --error-text: #FCA5A5; --good: #34D399; --warn: #FBBF24;
   }
-  * { box-sizing: border-box; margin: 0; }
+  * { box-sizing: border-box; margin: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
   body {
     background: var(--bg); color: var(--text);
     font-family: "Segoe UI", system-ui, sans-serif;
-    height: 100vh; display: flex; flex-direction: column;
+    display: flex; flex-direction: column;
   }
   header {
     display: flex; align-items: center; gap: 10px;
-    padding: 16px 22px; border-bottom: 1px solid var(--panel-border);
+    padding: 12px 18px; border-bottom: 1px solid var(--panel-border);
+    position: sticky; top: 0; background: var(--bg); z-index: 5;
   }
-  header h1 { font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 9px; }
-  header h1 img { width: 32px; height: 32px; border-radius: 9px; }
-  header .sub { font-size: 11px; color: var(--faint); }
-  header button {
-    margin-left: auto; background: var(--deep); color: #CBD5E1;
-    border: 1px solid var(--panel-border); border-radius: 8px;
-    padding: 8px 14px; font-size: 12px; cursor: pointer;
+  header h1 { font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+  header h1 img { width: 28px; height: 28px; border-radius: 8px; }
+  header .sub { font-size: 10px; color: var(--faint); }
+  #levelchip {
+    margin-left: auto; background: var(--deep); border: 1px solid var(--panel-border);
+    color: #A5B4FC; font-size: 11px; padding: 5px 10px; border-radius: 12px; white-space: nowrap;
   }
-  header button:hover { border-color: var(--accent); color: #fff; }
-  #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-  .row { display: flex; }
-  .row.user { justify-content: flex-end; }
-  .bubble {
-    max-width: 78%; padding: 10px 14px; border-radius: 12px;
-    font-size: 14px; line-height: 1.55; overflow-wrap: break-word;
-  }
-  .bubble.user { background: var(--accent); color: #fff; }
-  .bubble.bot {
+  main { flex: 1; overflow-y: auto; padding: 16px 16px 90px; }
+  section.view { display: none; }
+  section.view.active { display: block; }
+  h2 { font-size: 15px; margin: 18px 0 10px; }
+  h2:first-child { margin-top: 0; }
+  .card {
     background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 14px; padding: 14px; margin-bottom: 12px;
   }
+  .muted { color: var(--muted); font-size: 12px; }
+  .faint { color: var(--faint); font-size: 11px; }
+  .big { font-size: 22px; font-weight: bold; }
+  .accent { color: #A78BFA; }
+  .good { color: var(--good); }
+  .warn { color: var(--warn); }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .stat { background: var(--deep); border: 1px solid var(--panel-border); border-radius: 12px; padding: 10px; text-align: center; }
+  .stat .v { font-size: 20px; font-weight: bold; }
+  .stat .k { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  input, select, textarea {
+    width: 100%; background: var(--deep); color: var(--text);
+    border: 1px solid var(--panel-border); border-radius: 9px;
+    padding: 10px; font-size: 14px; font-family: inherit;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  label.f { display: block; font-size: 11px; color: var(--muted); margin: 8px 0 4px; }
+  button {
+    background: var(--deep); color: var(--body); border: 1px solid var(--panel-border);
+    border-radius: 9px; padding: 9px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+  }
+  button:hover { border-color: var(--accent); color: #fff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: bold; }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:disabled { background: #334155; border-color: #334155; color: var(--muted); cursor: default; }
+  button.small { padding: 5px 9px; font-size: 11px; border-radius: 7px; }
+  button.danger { color: var(--error-text); }
+  .chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chips button { padding: 6px 12px; font-size: 11px; border-radius: 14px; }
+  .chips button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .task { display: flex; align-items: flex-start; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #1E293B; }
+  .task:last-child { border-bottom: none; }
+  .task input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+  .task .t { font-size: 14px; }
+  .task.done .t { text-decoration: line-through; color: var(--faint); }
+  .task .meta { font-size: 10px; color: var(--faint); margin-top: 2px; }
+  .task .meta .due-soon { color: var(--warn); }
+  .task .meta .due-over { color: var(--error-text); }
+  .task .spacer { margin-left: auto; }
+  .bar { background: var(--deep); border-radius: 6px; height: 8px; overflow: hidden; margin-top: 6px; }
+  .bar > div { background: var(--accent); height: 100%; border-radius: 6px; }
+  .bar.green > div { background: var(--good); }
+  .week { display: flex; align-items: flex-end; gap: 6px; height: 90px; padding-top: 6px; }
+  .week .col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .week .col > div { width: 100%; background: var(--accent); border-radius: 5px 5px 0 0; min-height: 3px; }
+  .week .col.today > div { background: var(--good); }
+  .week .lbl { font-size: 9px; color: var(--faint); }
+  .empty { color: var(--faint); font-size: 12px; text-align: center; padding: 18px 8px; }
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; display: flex;
+    background: var(--deep); border-top: 1px solid var(--panel-border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); z-index: 10;
+  }
+  nav button {
+    flex: 1; background: none; border: none; color: var(--faint);
+    font-size: 10px; padding: 5px 2px; border-radius: 10px;
+  }
+  nav button .ic { display: block; font-size: 18px; margin-bottom: 2px; }
+  nav button.on { color: #A78BFA; background: #141a2a; }
+  nav button:hover { color: #A78BFA; }
+  #toast {
+    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--accent); color: var(--text);
+    padding: 10px 16px; border-radius: 12px; font-size: 13px; display: none; z-index: 20;
+    max-width: 90%; text-align: center;
+  }
+  /* AI chat */
+  #chat { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
+  .brow { display: flex; }
+  .brow.user { justify-content: flex-end; }
+  .bubble { max-width: 85%; padding: 10px 13px; border-radius: 12px; font-size: 14px; line-height: 1.5; overflow-wrap: break-word; }
+  .bubble.user { background: var(--accent); color: #fff; }
+  .bubble.bot { background: var(--panel); border: 1px solid var(--panel-border); }
   .bubble.bot.error { background: var(--error-bg); color: var(--error-text); border-color: #7F1D1D; }
-  .bubble.bot h1, .bubble.bot h2, .bubble.bot h3 { margin: 8px 0 4px; }
-  .bubble.bot p { margin: 6px 0; }
-  .bubble.bot ul, .bubble.bot ol { margin: 6px 0 6px 20px; }
-  .bubble.bot pre {
-    background: var(--deep); padding: 10px; border-radius: 8px;
-    overflow-x: auto; margin: 8px 0; font-size: 13px;
-  }
+  .bubble.bot p { margin: 6px 0; } .bubble.bot ul, .bubble.bot ol { margin: 6px 0 6px 20px; }
+  .bubble.bot pre { background: var(--deep); padding: 9px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
   .bubble.bot code { font-family: Consolas, monospace; }
   .bubble.bot :not(pre) > code { background: var(--deep); padding: 1px 5px; border-radius: 4px; }
-  .hint {
-    color: var(--muted); font-size: 13px; background: var(--panel);
-    border: 1px dashed var(--panel-border); padding: 14px; border-radius: 10px;
-    max-width: 78%;
-  }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 6px; }
-  .chips button {
-    background: var(--deep); color: #A5B4FC; border: 1px solid var(--panel-border);
-    border-radius: 14px; padding: 6px 12px; font-size: 11px; cursor: pointer;
-  }
-  .chips button:hover { border-color: var(--accent); color: #fff; }
-  footer { display: flex; gap: 10px; padding: 14px 20px 18px; }
-  #input {
-    flex: 1; background: var(--deep); color: var(--text);
-    border: 1px solid var(--panel-border); border-radius: 10px;
-    padding: 12px; font-size: 14px; resize: none; height: 64px;
-    font-family: inherit;
-  }
-  #input:focus { outline: none; border-color: var(--accent); }
-  #send {
-    width: 84px; border: none; border-radius: 10px; cursor: pointer;
-    background: var(--accent); color: #fff; font-size: 14px; font-weight: bold;
-  }
-  #send:hover { background: var(--accent-hover); }
-  #send:disabled { background: #334155; color: var(--muted); cursor: default; }
-  #status { padding: 0 22px 10px; font-size: 11px; color: var(--faint); min-height: 16px; }
+  .hint { color: var(--muted); font-size: 13px; background: var(--panel); border: 1px dashed var(--panel-border); padding: 13px; border-radius: 10px; }
+  #chatbar { display: flex; gap: 8px; margin-top: 10px; }
+  #chatinput { height: 58px; resize: none; }
+  #subtabs { display: flex; gap: 7px; margin-bottom: 12px; }
+  #subtabs button { flex: 1; padding: 8px 4px; font-size: 12px; border-radius: 10px; }
+  #subtabs button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .plan-day { margin-bottom: 10px; }
+  .plan-day .dh { color: #A78BFA; font-size: 12px; font-weight: bold; margin-bottom: 4px; }
+  .plan-block { display: flex; gap: 10px; align-items: center; background: var(--deep); border: 1px solid var(--panel-border); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; }
+  .plan-block .tm { color: #A78BFA; font-weight: bold; font-size: 13px; width: 44px; flex-shrink: 0; }
+  .plan-block .ti { flex: 1; font-size: 13px; }
+  .plan-block .mn { font-size: 11px; color: var(--faint); }
+  .exam { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #1E293B; }
+  .exam:last-child { border-bottom: none; }
+  .exam .cd { margin-left: auto; font-size: 12px; font-weight: bold; color: #A78BFA; white-space: nowrap; }
+  .exam .cd.today { color: var(--warn); }
+  .subrow { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #1E293B; }
+  .subrow:last-child { border-bottom: none; }
+  .del { background: none; border: none; color: var(--faint); font-size: 15px; padding: 4px 6px; cursor: pointer; }
+  .del:hover { color: var(--error-text); }
+  .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid #ffffff55; border-top-color: #fff; border-radius: 50%; animation: r 0.8s linear infinite; vertical-align: -2px; }
+  @keyframes r { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1><img src="/favicon.png" alt="logo"> Study Buddy</h1>
-    <div class="sub" id="model-line">GPT-OSS via Groq</div>
+    <h1><img src="/favicon.png" alt=""> Student Command Center</h1>
+    <div class="sub" id="health-line">web edition</div>
   </div>
-  <button id="reset">New chat</button>
+  <div id="levelchip">Lv 1 · 0 XP</div>
 </header>
 
-<div id="chat">
-  <div class="row"><div class="hint">Ask me anything about your studies — explanations, exam plans, or a quick quiz. I'll keep it short and step-by-step.</div></div>
-</div>
+<main>
+  <!-- ============ HOME ============ -->
+  <section class="view active" id="view-home">
+    <h2 id="greeting">Hi there 👋</h2>
+    <div class="card">
+      <div class="row"><span class="big" id="hm-level">Level 1</span><span class="faint" id="hm-xp"></span></div>
+      <div class="bar"><div id="hm-xpbar" style="width:0%"></div></div>
+      <div class="faint" style="margin-top:6px" id="hm-streak">🔥 0-day streak</div>
+    </div>
+    <div class="grid3">
+      <div class="stat"><div class="v" id="hm-pending">0</div><div class="k">PENDING TASKS</div></div>
+      <div class="stat"><div class="v" id="hm-donetoday">0</div><div class="k">DONE TODAY</div></div>
+      <div class="stat"><div class="v" id="hm-minutes">0</div><div class="k">MIN TODAY</div></div>
+    </div>
+    <div class="card" id="hm-examcard" style="display:none">
+      <div class="muted">NEXT EXAM</div>
+      <div class="big accent" id="hm-exam-count">—</div>
+      <div class="muted" id="hm-exam-subject"></div>
+    </div>
+    <h2>Today's blocks</h2>
+    <div class="card" id="hm-today"></div>
+    <h2>Quick add</h2>
+    <div class="row">
+      <input id="hm-quick" placeholder="e.g. Finish physics numericals…">
+      <button class="primary" onclick="quickAdd()">Add</button>
+    </div>
+    <h2>This week</h2>
+    <div class="card"><div class="week" id="hm-week"></div></div>
+  </section>
 
-<div class="chips" id="chips">
-  <button data-p="Explain photosynthesis like I'm 10">Explain photosynthesis like I'm 10</button>
-  <button data-p="Make a 7-day study plan for my exams">Make a 7-day study plan</button>
-  <button data-p="Quiz me on quadratic equations">Quiz me on quadratics</button>
-</div>
+  <!-- ============ TASKS ============ -->
+  <section class="view" id="view-tasks">
+    <h2>Tasks</h2>
+    <div class="chips" id="task-filters">
+      <button data-f="pending" class="on">Pending</button>
+      <button data-f="all">All</button>
+      <button data-f="done">Done</button>
+    </div>
+    <div class="card" id="task-list"></div>
+    <h2>Add a task</h2>
+    <div class="card">
+      <label class="f">What to do</label>
+      <input id="tk-title" placeholder="e.g. Revise thermodynamics chapter 2">
+      <div class="grid2">
+        <div><label class="f">Subject (optional)</label><input id="tk-subject" list="subject-list" placeholder="Physics"></div>
+        <div><label class="f">Minutes</label><input id="tk-minutes" type="number" min="5" max="480" placeholder="45"></div>
+      </div>
+      <label class="f">Due (optional)</label>
+      <input id="tk-due" type="datetime-local">
+      <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="addTask()">➕ Add task</button></div>
+    </div>
+    <datalist id="subject-list"></datalist>
+  </section>
 
-<footer>
-  <textarea id="input" placeholder="Ask anything about your studies…  (Enter to send, Shift+Enter for a new line)"></textarea>
-  <button id="send">Send</button>
-</footer>
-<div id="status"></div>
+  <!-- ============ PLANNER ============ -->
+  <section class="view" id="view-planner">
+    <h2>AI Study Planner</h2>
+    <p class="muted">Tell it about an exam — get a day-by-day plan you approve before anything is saved.</p>
+    <div class="card">
+      <label class="f">Exam subject</label>
+      <input id="pl-subject" list="subject-list" placeholder="e.g. Physics">
+      <div class="grid2">
+        <div><label class="f">Plan length (days)</label><input id="pl-days" type="number" min="1" max="14" value="7"></div>
+        <div><label class="f">Study minutes/day</label><input id="pl-minutes" type="number" min="30" max="480" step="15" value="120"></div>
+      </div>
+      <label class="f">Topics to focus on (optional)</label>
+      <input id="pl-focus" placeholder="e.g. weak in optics, strong in kinematics">
+      <div style="margin-top:10px"><button class="primary" style="width:100%" id="pl-go" onclick="generatePlan()">✨ Generate plan</button></div>
+      <div class="faint" style="margin-top:8px" id="pl-status"></div>
+    </div>
+    <div id="pl-preview"></div>
+    <div id="pl-latest" class="faint" style="margin-top:8px"></div>
+  </section>
+
+  <!-- ============ AI ============ -->
+  <section class="view" id="view-ai">
+    <h2>Study Buddy <span class="faint" id="ai-model"></span></h2>
+    <div id="chat">
+      <div class="brow"><div class="hint">Ask me anything about your studies — explanations, exam plans, or a quick quiz. I'll keep it short and step-by-step.</div></div>
+    </div>
+    <div class="chips">
+      <button data-p="Explain photosynthesis like I'm 10">Explain photosynthesis</button>
+      <button data-p="Quiz me on quadratic equations">Quiz me on quadratics</button>
+      <button data-p="Give me 5 last-minute revision tips">Revision tips</button>
+    </div>
+    <div id="chatbar">
+      <textarea id="chatinput" placeholder="Ask anything…  (Enter to send)"></textarea>
+      <button class="primary" id="chatsend" style="width:70px">Send</button>
+    </div>
+  </section>
+
+  <!-- ============ MORE ============ -->
+  <section class="view" id="view-more">
+    <div id="subtabs">
+      <button data-s="subjects" class="on">Subjects</button>
+      <button data-s="exams">Exams</button>
+      <button data-s="progress">Progress</button>
+      <button data-s="settings">Settings</button>
+    </div>
+
+    <div id="sub-subjects">
+      <div class="card" id="subject-rows"></div>
+      <div class="row" style="margin-top:10px">
+        <input id="sb-new" placeholder="New subject name…">
+        <button class="primary" onclick="addSubjectUI()">Add</button>
+      </div>
+    </div>
+
+    <div id="sub-exams" style="display:none">
+      <div class="card" id="exam-rows"></div>
+      <div class="card" style="margin-top:10px">
+        <label class="f">Subject</label><input id="ex-subject" list="subject-list" placeholder="Mathematics">
+        <label class="f">Date</label><input id="ex-date" type="date">
+        <label class="f">Time</label><input id="ex-time" type="time" value="09:30">
+        <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="addExamUI()">➕ Add exam</button></div>
+      </div>
+    </div>
+
+    <div id="sub-progress" style="display:none">
+      <div class="grid3">
+        <div class="stat"><div class="v" id="pg-streak">0</div><div class="k">🔥 STREAK</div></div>
+        <div class="stat"><div class="v" id="pg-exams">0</div><div class="k">EXAMS DONE</div></div>
+        <div class="stat"><div class="v" id="pg-level">1</div><div class="k">LEVEL</div></div>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <div class="muted">TODAY'S GOAL — <span id="pg-goal-line">0 / 120 min</span></div>
+        <div class="bar green"><div id="pg-goalbar" style="width:0%"></div></div>
+      </div>
+      <h2>This week</h2>
+      <div class="card"><div class="week" id="pg-week"></div></div>
+      <h2>Subject progress</h2>
+      <div class="card" id="pg-subjects"></div>
+    </div>
+
+    <div id="sub-settings" style="display:none">
+      <div class="card">
+        <label class="f">Your name</label><input id="st-name">
+        <label class="f">Daily study goal (minutes)</label><input id="st-goal" type="number" min="15" max="720" step="15">
+        <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="saveSettings()">💾 Save settings</button></div>
+      </div>
+      <div class="card">
+        <div class="muted">DANGER ZONE</div>
+        <p class="faint" style="margin:6px 0">Deletes every task, exam, subject and XP point from the cloud database.</p>
+        <button class="danger" style="width:100%" onclick="resetAll()">🗑 Reset all data</button>
+      </div>
+      <p class="faint" style="text-align:center;margin-top:10px" id="health-foot"></p>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-v="home" class="on"><span class="ic">🏠</span>Home</button>
+  <button data-v="tasks"><span class="ic">📋</span>Tasks</button>
+  <button data-v="planner"><span class="ic">📆</span>Planner</button>
+  <button data-v="ai"><span class="ic">🤖</span>AI</button>
+  <button data-v="more"><span class="ic">⚙️</span>More</button>
+</nav>
+<div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script>
-const chatEl = document.getElementById("chat");
-const input = document.getElementById("input");
-const sendBtn = document.getElementById("send");
-const statusEl = document.getElementById("status");
-const chips = document.getElementById("chips");
-const history = [];  // [{role, content}] — kept in the browser, nothing stored server-side
-let busy = false;
-
-const md = (text) => {
-  try { return marked.parse(text, { breaks: true }); }
-  catch { const p = document.createElement("div"); p.textContent = text; return p.innerHTML; }
+/* ================= helpers ================= */
+const $ = (id) => document.getElementById(id);
+const CODE = () => localStorage.getItem("scc_code") || "";
+const toastEl = $("toast");
+let toastTimer = null;
+function toast(msg, ms = 2600) {
+  toastEl.textContent = msg; toastEl.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.style.display = "none", ms);
+}
+async function api(path, opts = {}) {
+  const res = await fetch("/api/" + path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", "X-Access-Code": CODE(), ...(opts.headers || {}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (res.status === 401) {
+    const code = prompt("This site is protected. Enter the access code:");
+    if (code) { localStorage.setItem("scc_code", code); return api(path, opts); }
+    throw new Error("Access code required.");
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || res.statusText);
+  return data;
+}
+const esc = (s) => { const d = document.createElement("div"); d.textContent = s ?? ""; return d.innerHTML; };
+const md = (t) => { try { return marked.parse(t, { breaks: true }); } catch { return esc(t); } };
+const fmtDue = (s) => {
+  if (!s) return "";
+  const [d, t] = s.split(" ");
+  const date = new Date(d + "T" + (t || "00:00"));
+  if (isNaN(date)) return s;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const diff = Math.round((date - today) / 86400000);
+  const when = diff === 0 ? "today" : diff === 1 ? "tomorrow" : diff < 0 ? `${-diff}d overdue` : `in ${diff}d`;
+  const cls = diff < 0 ? "due-over" : diff <= 1 ? "due-soon" : "";
+  return `<span class="${cls}">due ${when}${t && t !== "00:00" ? " · " + t : ""}</span>`;
 };
 
-const scrollDown = () => { chatEl.scrollTop = chatEl.scrollHeight; };
-
-function addBubble(role, html, isError = false) {
-  const row = document.createElement("div");
-  row.className = "row" + (role === "user" ? " user" : "");
-  const bubble = document.createElement("div");
-  bubble.className = "bubble " + (role === "user" ? "user" : "bot" + (isError ? " error" : ""));
-  bubble.innerHTML = html;
-  row.appendChild(bubble);
-  chatEl.appendChild(row);
-  scrollDown();
-  return bubble;
+/* ================= router ================= */
+document.querySelectorAll("nav button").forEach(btn =>
+  btn.addEventListener("click", () => showView(btn.dataset.v)));
+const loaders = { home: loadHome, tasks: loadTasks, planner: loadPlanner, ai: loadAI, more: loadMore };
+function showView(name) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === name));
+  document.querySelectorAll("section.view").forEach(s => s.classList.toggle("active", s.id === "view-" + name));
+  loaders[name]().catch(err => toast("⚠️ " + err.message));
 }
 
-function setBusy(state) {
-  busy = state;
-  sendBtn.disabled = state;
-  sendBtn.textContent = state ? "…" : "Send";
-  statusEl.textContent = state ? "Study Buddy is thinking…" : "";
+/* ================= home ================= */
+async function loadHome() {
+  const d = await api("dashboard");
+  $("greeting").textContent = `Hi ${d.student_name} 👋`;
+  $("levelchip").textContent = `Lv ${d.level.level} · ${d.level.xp} XP`;
+  $("hm-level").textContent = `Level ${d.level.level}`;
+  $("hm-xp").textContent = `${d.level.into_level}/100 XP to next level`;
+  $("hm-xpbar").style.width = d.level.into_level + "%";
+  $("hm-streak").textContent = `🔥 ${d.streak}-day streak`;
+  $("hm-pending").textContent = d.pending_count;
+  $("hm-donetoday").textContent = d.done_today_count;
+  $("hm-minutes").textContent = d.minutes_today;
+  if (d.next_exam) {
+    $("hm-examcard").style.display = "";
+    $("hm-exam-count").textContent = d.next_exam.countdown;
+    $("hm-exam-subject").textContent = d.next_exam.subject + " · " + d.next_exam.occurs_at;
+  } else { $("hm-examcard").style.display = "none"; }
+  $("hm-today").innerHTML = d.today_tasks.length
+    ? d.today_tasks.map(taskRow).join("")
+    : `<div class="empty">Nothing scheduled for today 🎉</div>`;
+  renderWeek($("hm-week"), d.weekly);
 }
 
-async function send() {
-  const message = input.value.trim();
-  if (!message || busy) return;
-  input.value = "";
-  chips.style.display = "none";
-  addBubble("user", md(message));
-  history.push({ role: "user", content: message });
-  const bubble = addBubble("bot", "<em>…</em>");
-  setBusy(true);
-
+/* ================= tasks ================= */
+let taskFilter = "pending";
+document.querySelectorAll("#task-filters button").forEach(b =>
+  b.addEventListener("click", () => {
+    taskFilter = b.dataset.f;
+    document.querySelectorAll("#task-filters button").forEach(x => x.classList.toggle("on", x === b));
+    loadTasks();
+  }));
+function taskRow(t) {
+  return `<div class="task ${t.done ? "done" : ""}">
+    <input type="checkbox" ${t.done ? "checked" : ""} onchange="toggleTask(${t.id}, this.checked)">
+    <div><div class="t">${esc(t.title)}</div>
+    <div class="meta">${t.subject ? esc(t.subject) + " · " : ""}${t.minutes ? t.minutes + " min · " : ""}${fmtDue(t.due_at)}</div></div>
+    <button class="del spacer" onclick="delTask(${t.id})">✕</button></div>`;
+}
+async function loadTasks() {
+  const rows = await api("tasks?filter=" + taskFilter);
+  $("task-list").innerHTML = rows.length ? rows.map(taskRow).join("")
+    : `<div class="empty">${taskFilter === "done" ? "Nothing completed yet." : "No tasks here — add one below 👇"}</div>`;
+  const subs = await api("subjects");
+  $("subject-list").innerHTML = subs.map(s => `<option value="${esc(s.name)}">`).join("");
+}
+async function toggleTask(id, done) {
   try {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, history: history.slice(0, -1) }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.detail || "Request failed (" + res.status + ")");
-    bubble.innerHTML = md(data.reply);
-    history.push({ role: "assistant", content: data.reply });
-  } catch (err) {
-    bubble.classList.add("error");
-    bubble.textContent = "⚠️ " + err.message;
-    history.pop();  // drop the unanswered question
-  } finally {
-    setBusy(false);
-    input.focus();
-    scrollDown();
-  }
+    const r = await api("tasks/" + id, { method: "PATCH", body: { done } });
+    if (r.leveled_up) toast(`🎉 LEVEL UP! You reached level ${r.level.level}!`);
+    else if (done) toast(`+${r.xp_gained} XP ⚡`);
+    loadTasks(); loadHome().catch(() => {});
+  } catch (err) { toast("⚠️ " + err.message); loadTasks(); }
+}
+async function delTask(id) {
+  await api("tasks/" + id, { method: "DELETE" });
+  loadTasks(); loadHome().catch(() => {});
+}
+async function addTask() {
+  const title = $("tk-title").value.trim();
+  if (!title) return toast("Type a task first.");
+  const dueRaw = $("tk-due").value; // "YYYY-MM-DDTHH:MM"
+  const due = dueRaw ? dueRaw.replace("T", " ") : null;
+  await api("tasks", { method: "POST", body: {
+    title, subject: $("tk-subject").value.trim() || null,
+    minutes: +$("tk-minutes").value || null, due_at: due } });
+  $("tk-title").value = ""; $("tk-subject").value = ""; $("tk-minutes").value = ""; $("tk-due").value = "";
+  toast("Task added ✅"); loadTasks();
+}
+async function quickAdd() {
+  const el = $("hm-quick"); const title = el.value.trim();
+  if (!title) return;
+  await api("tasks", { method: "POST", body: { title } });
+  el.value = ""; toast("Task added ✅"); loadHome();
 }
 
-sendBtn.addEventListener("click", send);
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
-});
-document.getElementById("reset").addEventListener("click", () => {
-  if (busy) return;
-  history.length = 0;
-  chatEl.innerHTML = '<div class="row"><div class="hint">Ask me anything about your studies — explanations, exam plans, or a quick quiz. I\'ll keep it short and step-by-step.</div></div>';
-  chips.style.display = "flex";
-});
-chips.querySelectorAll("button").forEach((b) =>
-  b.addEventListener("click", () => { input.value = b.dataset.p; input.focus(); })
-);
+/* ================= planner ================= */
+let previewPlan = null;
+async function loadPlanner() {
+  const latest = await api("planner/latest");
+  $("pl-latest").textContent = latest
+    ? `Latest plan: ${latest.title} — ${latest.tasks_total} tasks (${latest.tasks_pending} still pending) · created ${latest.created_at}`
+    : "No plans yet — generate your first one above.";
+  const subs = await api("subjects");
+  $("subject-list").innerHTML = subs.map(s => `<option value="${esc(s.name)}">`).join("");
+}
+async function generatePlan() {
+  const subject = $("pl-subject").value.trim();
+  if (!subject) return toast("Pick or type an exam subject first.");
+  const btn = $("pl-go"); btn.disabled = true;
+  $("pl-status").innerHTML = `<span class="spin"></span> Planning… this usually takes 10–20 seconds.`;
+  $("pl-preview").innerHTML = "";
+  previewPlan = null;
+  try {
+    const plan = await api("planner/generate", { method: "POST", body: {
+      subject, days: +$("pl-days").value || 7,
+      daily_minutes: +$("pl-minutes").value || 120,
+      focus: $("pl-focus").value.trim() } });
+    previewPlan = plan;
+    $("pl-status").textContent = "Review your plan — nothing is saved until you approve it.";
+    const names = ["Today", "Tomorrow"];
+    $("pl-preview").innerHTML = `<div class="card">
+      <div class="big" style="font-size:16px">${esc(plan.plan_title)}</div>
+      ${plan.days.map(d => {
+        const when = new Date(); when.setDate(when.getDate() + d.offset);
+        const head = names[d.offset] || when.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short" });
+        return `<div class="plan-day"><div class="dh">${head} · ${when.toISOString().slice(0, 10)}</div>
+          ${d.blocks.map(b => `<div class="plan-block"><span class="tm">${esc(b.start_time)}</span><span class="ti">${esc(b.title)}</span><span class="mn">${b.minutes} min</span></div>`).join("")}
+        </div>`;
+      }).join("")}
+      <div class="faint">${plan.block_count} study blocks · ${plan.total_minutes} minutes total</div>
+      <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="applyPlan()">➕ Add this plan to my tasks</button></div>
+    </div>`;
+  } catch (err) {
+    $("pl-status").textContent = "⚠️ " + err.message;
+  } finally { btn.disabled = false; }
+}
+async function applyPlan() {
+  if (!previewPlan) return;
+  const r = await api("planner/apply", { method: "POST", body: {
+    subject: previewPlan.subject, plan_title: previewPlan.plan_title, days: previewPlan.days } });
+  toast(`✅ Added ${r.tasks_added} tasks from '${previewPlan.plan_title}'`);
+  previewPlan = null; $("pl-preview").innerHTML = ""; $("pl-status").textContent = "";
+  loadPlanner();
+}
 
-fetch("/api/health").then(r => r.json()).then((h) => {
-  if (h.model) document.getElementById("model-line").textContent = "GPT-OSS via Groq · " + h.model;
-  if (h.status !== "ok") statusEl.textContent = h.detail || "Service not ready.";
-}).catch(() => {});
-input.focus();
+/* ================= AI chat ================= */
+const chatEl = $("chat"), chatInput = $("chatinput");
+const history = [];
+let aiBusy = false;
+function loadAI() {
+  api("health").then(h => {
+    $("ai-model").textContent = h.ai === "ok" ? "" : "· AI unavailable";
+    $("health-line").textContent = h.ai === "ok" ? "AI online" : "AI offline";
+    $("health-foot").textContent = `status: ${h.status} · db: ${h.db} · ai: ${h.ai}`;
+  }).catch(() => {});
+}
+function addBubble(role, html) {
+  const row = document.createElement("div"); row.className = "brow " + (role === "user" ? "user" : "");
+  const b = document.createElement("div"); b.className = "bubble " + role; b.innerHTML = html;
+  row.appendChild(b); chatEl.appendChild(row);
+  row.scrollIntoView({ behavior: "smooth", block: "end" });
+  return b;
+}
+async function sendChat() {
+  if (aiBusy) return;
+  const text = chatInput.value.trim();
+  if (!text) return;
+  chatInput.value = "";
+  addBubble("user", esc(text));
+  history.push({ role: "user", content: text });
+  aiBusy = true; $("chatsend").disabled = true;
+  const bot = addBubble("bot", "<span class='spin'></span>");
+  try {
+    const r = await api("chat", { method: "POST", body: { message: text, history, access_code: CODE() } });
+    bot.innerHTML = md(r.reply);
+    history.push({ role: "assistant", content: r.reply });
+  } catch (err) {
+    bot.classList.add("error");
+    bot.textContent = "⚠️ " + err.message;
+  } finally { aiBusy = false; $("chatsend").disabled = false; }
+}
+$("chatsend").addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+document.querySelectorAll(".chips button[data-p]").forEach(b =>
+  b.addEventListener("click", () => { chatInput.value = b.dataset.p; sendChat(); }));
+
+/* ================= more: subjects / exams / progress / settings ================= */
+document.querySelectorAll("#subtabs button").forEach(b =>
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#subtabs button").forEach(x => x.classList.toggle("on", x === b));
+    ["subjects", "exams", "progress", "settings"].forEach(s =>
+      $("sub-" + s).style.display = b.dataset.s === s ? "" : "none");
+    if (b.dataset.s === "progress") loadProgress();
+    if (b.dataset.s === "settings") loadSettings();
+  }));
+async function loadMore() {
+  renderSubjects();
+  renderExams();
+}
+async function renderSubjects() {
+  const subs = await api("subjects");
+  $("subject-rows").innerHTML = subs.length ? subs.map(s => `
+    <div class="subrow">
+      <div><div style="font-size:14px">${esc(s.name)}</div>
+      <div class="meta" style="font-size:10px;color:var(--faint)">${s.pending} pending · ${s.done} done${s.next_exam ? " · next exam " + s.next_exam : ""}</div></div>
+      <button class="del spacer" onclick="delSubject('${esc(s.name)}')">✕</button>
+    </div>`).join("")
+    : `<div class="empty">No subjects yet — add one below.</div>`;
+}
+async function addSubjectUI() {
+  const el = $("sb-new"); if (!el.value.trim()) return;
+  try { await api("subjects", { method: "POST", body: { name: el.value.trim() } }); el.value = ""; renderSubjects(); loadTasks().catch(() => {}); }
+  catch (err) { toast("⚠️ " + err.message); }
+}
+async function delSubject(name) {
+  await api("subjects/" + encodeURIComponent(name), { method: "DELETE" });
+  renderSubjects();
+}
+async function renderExams() {
+  const rows = await api("exams");
+  $("exam-rows").innerHTML = rows.length ? rows.map(e => `
+    <div class="exam">
+      <div><div style="font-size:14px">${esc(e.subject)}</div>
+      <div class="meta" style="font-size:10px;color:var(--faint)">${esc(e.occurs_at)}${e.done ? " · " + esc(e.result || "done") + (e.marks != null ? " · " + e.marks + " marks" : "") : ""}</div></div>
+      <span class="cd ${e.countdown === "TODAY!" ? "today" : ""}">${e.done ? "✔ done" : e.countdown}</span>
+      ${e.done ? "" : `<button class="small" onclick="markResult(${e.id})">Log result</button>`}
+      <button class="del" onclick="delExam(${e.id})">✕</button>
+    </div>`).join("")
+    : `<div class="empty">No exams yet — add your first one below.</div>`;
+}
+async function addExamUI() {
+  const subject = $("ex-subject").value.trim(), date = $("ex-date").value, time = $("ex-time").value || "09:30";
+  if (!subject || !date) return toast("Subject and date are needed.");
+  try {
+    await api("exams", { method: "POST", body: { subject, occurs_at: `${date} ${time}` } });
+    $("ex-subject").value = ""; $("ex-date").value = "";
+    toast("Exam added 🎯"); renderExams(); loadHome().catch(() => {});
+  } catch (err) { toast("⚠️ " + err.message); }
+}
+async function delExam(id) { await api("exams/" + id, { method: "DELETE" }); renderExams(); }
+async function markResult(id) {
+  const result = prompt("Result? (e.g. 'good', 'average', 'bad')");
+  if (result === null) return;
+  const marks = prompt("Marks (optional — leave empty to skip):");
+  const r = await api(`exams/${id}/result`, { method: "POST", body: { result, marks: marks ? +marks : null } });
+  if (r.leveled_up) toast(`🎉 LEVEL UP! You reached level ${r.level.level}!`);
+  else toast(`+${r.xp_gained} XP for showing up ⚡`);
+  renderExams();
+}
+function renderWeek(el, weekly) {
+  const labels = ["M", "T", "W", "T", "F", "S", "S"];
+  const max = Math.max(1, ...weekly);
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  el.innerHTML = weekly.map((n, i) => `
+    <div class="col ${i === todayIdx ? "today" : ""}">
+      <div class="lbl" style="color:var(--body);font-size:10px">${n || ""}</div>
+      <div style="height:${Math.max(4, n / max * 100)}%"></div>
+      <div class="lbl">${labels[i]}</div>
+    </div>`).join("");
+}
+async function loadProgress() {
+  const p = await api("progress");
+  $("pg-streak").textContent = p.streak;
+  $("pg-exams").textContent = p.exams_completed;
+  $("pg-level").textContent = p.level.level;
+  $("pg-goal-line").textContent = `${p.minutes_today} / ${p.daily_goal_minutes} min`;
+  $("pg-goalbar").style.width = p.goal_percent + "%";
+  renderWeek($("pg-week"), p.weekly);
+  $("pg-subjects").innerHTML = p.subjects.length ? p.subjects.map(s => {
+    const total = s.pending + s.done;
+    const pct = total ? Math.round(s.done / total * 100) : 0;
+    return `<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between">
+      <span style="font-size:13px">${esc(s.subject)}</span><span class="faint">${s.done}/${total}</span></div>
+      <div class="bar green"><div style="width:${pct}%"></div></div></div>`;
+  }).join("") : `<div class="empty">Add subjects and tasks to see progress.</div>`;
+}
+async function loadSettings() {
+  const s = await api("settings");
+  $("st-name").value = s.student_name;
+  $("st-goal").value = s.daily_goal_minutes;
+  loadAI();
+}
+async function saveSettings() {
+  await api("settings", { method: "POST", body: {
+    student_name: $("st-name").value.trim(), daily_goal_minutes: +$("st-goal").value } });
+  toast("Settings saved 💾"); loadHome();
+}
+async function resetAll() {
+  if (!confirm("Really delete ALL data from the cloud database?")) return;
+  if (!confirm("Last chance — this cannot be undone. Reset everything?")) return;
+  await api("reset", { method: "POST" });
+  toast("All data reset 🧹"); showView("home");
+}
+
+/* ================= boot ================= */
+api("health").then(h => {
+  $("health-line").textContent = h.ai === "ok" ? "AI online" : "AI offline";
+}).catch(() => { $("health-line").textContent = "offline"; });
+loadHome().catch(err => toast("⚠️ " + err.message));
 </script>
 </body>
 </html>
