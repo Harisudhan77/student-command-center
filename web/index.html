@@ -25,13 +25,16 @@
     padding: 12px 18px; border-bottom: 1px solid var(--panel-border);
     position: sticky; top: 0; background: var(--bg); z-index: 5;
   }
-  header h1 { font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+  header h1 { font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
   header h1 img { width: 28px; height: 28px; border-radius: 8px; }
   header .sub { font-size: 10px; color: var(--faint); }
   #levelchip {
     margin-left: auto; background: var(--deep); border: 1px solid var(--panel-border);
     color: #A5B4FC; font-size: 11px; padding: 5px 10px; border-radius: 12px; white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
   }
+  #logout { background: none; border: none; color: var(--faint); font-size: 16px; padding: 0 2px; cursor: pointer; }
+  #logout:hover { color: var(--error-text); }
   main { flex: 1; overflow-y: auto; padding: 16px 16px 90px; }
   section.view { display: none; }
   section.view.active { display: block; }
@@ -45,8 +48,6 @@
   .faint { color: var(--faint); font-size: 11px; }
   .big { font-size: 22px; font-weight: bold; }
   .accent { color: #A78BFA; }
-  .good { color: var(--good); }
-  .warn { color: var(--warn); }
   .row { display: flex; gap: 8px; align-items: center; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
@@ -94,21 +95,34 @@
   nav {
     position: fixed; bottom: 0; left: 0; right: 0; display: flex;
     background: var(--deep); border-top: 1px solid var(--panel-border);
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); z-index: 10;
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom)); z-index: 10;
   }
   nav button {
     flex: 1; background: none; border: none; color: var(--faint);
-    font-size: 10px; padding: 5px 2px; border-radius: 10px;
+    font-size: 9px; padding: 5px 1px; border-radius: 10px;
   }
-  nav button .ic { display: block; font-size: 18px; margin-bottom: 2px; }
+  nav button .ic { display: block; font-size: 17px; margin-bottom: 2px; }
   nav button.on { color: #A78BFA; background: #141a2a; }
   nav button:hover { color: #A78BFA; }
   #toast {
-    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+    position: fixed; left: 50%; bottom: 95px; transform: translateX(-50%);
     background: var(--panel); border: 1px solid var(--accent); color: var(--text);
     padding: 10px 16px; border-radius: 12px; font-size: 13px; display: none; z-index: 20;
     max-width: 90%; text-align: center;
   }
+  /* ===== login ===== */
+  #login-screen {
+    position: fixed; inset: 0; z-index: 50; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #login-screen .box { width: 100%; max-width: 360px; }
+  #login-screen img { width: 64px; height: 64px; border-radius: 16px; display: block; margin: 0 auto 12px; }
+  #login-screen h1 { font-size: 20px; text-align: center; }
+  #login-screen .sub { text-align: center; font-size: 12px; color: var(--muted); margin-bottom: 18px; }
+  #login-err { color: var(--error-text); font-size: 12px; min-height: 16px; margin-top: 8px; text-align: center; }
+  #login-screen .switch { text-align: center; font-size: 12px; color: var(--muted); margin-top: 14px; }
+  #login-screen .switch a { color: #A78BFA; cursor: pointer; }
+  #app.hidden, #login-screen.hidden { display: none; }
   /* AI chat */
   #chat { display: flex; flex-direction: column; gap: 10px; padding-bottom: 6px; }
   .brow { display: flex; }
@@ -121,7 +135,6 @@
   .bubble.bot pre { background: var(--deep); padding: 9px; border-radius: 8px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
   .bubble.bot code { font-family: Consolas, monospace; }
   .bubble.bot :not(pre) > code { background: var(--deep); padding: 1px 5px; border-radius: 4px; }
-  .hint { color: var(--muted); font-size: 13px; background: var(--panel); border: 1px dashed var(--panel-border); padding: 13px; border-radius: 10px; }
   #chatbar { display: flex; gap: 8px; margin-top: 10px; }
   #chatinput { height: 58px; resize: none; }
   #subtabs { display: flex; gap: 7px; margin-bottom: 12px; }
@@ -146,12 +159,35 @@
 </style>
 </head>
 <body>
+
+<!-- ================= LOGIN ================= -->
+<div id="login-screen">
+  <div class="box">
+    <img src="/favicon.png" alt="logo">
+    <h1>Student Command Center</h1>
+    <div class="sub" id="login-sub">Log in to your command center</div>
+    <div class="card">
+      <label class="f" id="ln-display-label" style="display:none">Display name</label>
+      <input id="ln-display" placeholder="e.g. Harisudhan" style="display:none">
+      <label class="f">Username</label>
+      <input id="ln-user" placeholder="yourname" autocapitalize="none" autocomplete="username">
+      <label class="f">Password</label>
+      <input id="ln-pass" type="password" placeholder="••••••" autocomplete="current-password">
+      <div style="margin-top:12px"><button class="primary" style="width:100%" id="ln-go">Log in</button></div>
+      <div id="login-err"></div>
+      <div class="switch"><span id="ln-switch-text">New here?</span> <a id="ln-switch">Create an account</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
 <header>
   <div>
-    <h1><img src="/favicon.png" alt=""> Student Command Center</h1>
+    <h1><img src="/favicon.png" alt=""> Command Center</h1>
     <div class="sub" id="health-line">web edition</div>
   </div>
-  <div id="levelchip">Lv 1 · 0 XP</div>
+  <div id="levelchip"><span id="level-text">Lv 1 · 0 XP</span><button id="logout" title="Log out">⎋</button></div>
 </header>
 
 <main>
@@ -208,6 +244,21 @@
     <datalist id="subject-list"></datalist>
   </section>
 
+  <!-- ============ EXAMS ============ -->
+  <section class="view" id="view-exams">
+    <h2>Exams 🎯</h2>
+    <div class="card" id="exam-rows"></div>
+    <h2>Add an exam</h2>
+    <div class="card">
+      <label class="f">Subject</label><input id="ex-subject" list="subject-list" placeholder="Mathematics">
+      <div class="grid2">
+        <div><label class="f">Date</label><input id="ex-date" type="date"></div>
+        <div><label class="f">Time</label><input id="ex-time" type="time" value="09:30"></div>
+      </div>
+      <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="addExamUI()">➕ Add exam</button></div>
+    </div>
+  </section>
+
   <!-- ============ PLANNER ============ -->
   <section class="view" id="view-planner">
     <h2>AI Study Planner</h2>
@@ -249,7 +300,6 @@
   <section class="view" id="view-more">
     <div id="subtabs">
       <button data-s="subjects" class="on">Subjects</button>
-      <button data-s="exams">Exams</button>
       <button data-s="progress">Progress</button>
       <button data-s="settings">Settings</button>
     </div>
@@ -259,16 +309,6 @@
       <div class="row" style="margin-top:10px">
         <input id="sb-new" placeholder="New subject name…">
         <button class="primary" onclick="addSubjectUI()">Add</button>
-      </div>
-    </div>
-
-    <div id="sub-exams" style="display:none">
-      <div class="card" id="exam-rows"></div>
-      <div class="card" style="margin-top:10px">
-        <label class="f">Subject</label><input id="ex-subject" list="subject-list" placeholder="Mathematics">
-        <label class="f">Date</label><input id="ex-date" type="date">
-        <label class="f">Time</label><input id="ex-time" type="time" value="09:30">
-        <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="addExamUI()">➕ Add exam</button></div>
       </div>
     </div>
 
@@ -290,14 +330,18 @@
 
     <div id="sub-settings" style="display:none">
       <div class="card">
+        <div class="muted">LOGGED IN AS</div>
+        <div style="font-size:15px;margin-top:2px" id="st-user"></div>
+      </div>
+      <div class="card">
         <label class="f">Your name</label><input id="st-name">
         <label class="f">Daily study goal (minutes)</label><input id="st-goal" type="number" min="15" max="720" step="15">
         <div style="margin-top:10px"><button class="primary" style="width:100%" onclick="saveSettings()">💾 Save settings</button></div>
       </div>
       <div class="card">
         <div class="muted">DANGER ZONE</div>
-        <p class="faint" style="margin:6px 0">Deletes every task, exam, subject and XP point from the cloud database.</p>
-        <button class="danger" style="width:100%" onclick="resetAll()">🗑 Reset all data</button>
+        <p class="faint" style="margin:6px 0">Deletes every task, exam, subject and XP point from YOUR account. Other accounts are safe.</p>
+        <button class="danger" style="width:100%" onclick="resetAll()">🗑 Reset my data</button>
       </div>
       <p class="faint" style="text-align:center;margin-top:10px" id="health-foot"></p>
     </div>
@@ -307,17 +351,21 @@
 <nav>
   <button data-v="home" class="on"><span class="ic">🏠</span>Home</button>
   <button data-v="tasks"><span class="ic">📋</span>Tasks</button>
+  <button data-v="exams"><span class="ic">🎯</span>Exams</button>
   <button data-v="planner"><span class="ic">📆</span>Planner</button>
   <button data-v="ai"><span class="ic">🤖</span>AI</button>
   <button data-v="more"><span class="ic">⚙️</span>More</button>
 </nav>
+</div><!-- /app -->
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
 <script>
 /* ================= helpers ================= */
 const $ = (id) => document.getElementById(id);
-const CODE = () => localStorage.getItem("scc_code") || "";
+const TOKEN_KEY = "scc_token";
+let me = null;
+const token = () => localStorage.getItem(TOKEN_KEY) || "";
 const toastEl = $("toast");
 let toastTimer = null;
 function toast(msg, ms = 2600) {
@@ -328,14 +376,10 @@ function toast(msg, ms = 2600) {
 async function api(path, opts = {}) {
   const res = await fetch("/api/" + path, {
     ...opts,
-    headers: { "Content-Type": "application/json", "X-Access-Code": CODE(), ...(opts.headers || {}) },
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token(), ...(opts.headers || {}) },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
   });
-  if (res.status === 401) {
-    const code = prompt("This site is protected. Enter the access code:");
-    if (code) { localStorage.setItem("scc_code", code); return api(path, opts); }
-    throw new Error("Access code required.");
-  }
+  if (res.status === 401 && !path.startsWith("auth/")) { logout(false); throw new Error("Please log in."); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.detail || res.statusText);
   return data;
@@ -354,10 +398,59 @@ const fmtDue = (s) => {
   return `<span class="${cls}">due ${when}${t && t !== "00:00" ? " · " + t : ""}</span>`;
 };
 
+/* ================= login ================= */
+let loginMode = "login";
+function setLoginMode(mode) {
+  loginMode = mode;
+  $("ln-display").style.display = mode === "register" ? "" : "none";
+  $("ln-display-label").style.display = mode === "register" ? "" : "none";
+  $("ln-go").textContent = mode === "register" ? "Create account" : "Log in";
+  $("ln-switch-text").textContent = mode === "register" ? "Already have an account?" : "New here?";
+  $("ln-switch").textContent = mode === "register" ? "Log in" : "Create an account";
+  $("login-err").textContent = "";
+}
+$("ln-switch").addEventListener("click", () => setLoginMode(loginMode === "login" ? "register" : "login"));
+async function doLogin() {
+  const btn = $("ln-go"); btn.disabled = true;
+  $("login-err").textContent = "";
+  const path = loginMode === "register" ? "auth/register" : "auth/login";
+  try {
+    const r = await api(path, { method: "POST", body: {
+      username: $("ln-user").value, password: $("ln-pass").value,
+      display_name: $("ln-display").value } });
+    localStorage.setItem(TOKEN_KEY, r.token);
+    me = { username: r.username, display_name: r.display_name };
+    enterApp();
+  } catch (err) { $("login-err").textContent = err.message; }
+  finally { btn.disabled = false; }
+}
+$("ln-go").addEventListener("click", doLogin);
+$("ln-pass").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+$("ln-user").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+function logout(callApi = true) {
+  localStorage.removeItem(TOKEN_KEY);
+  me = null;
+  $("app").classList.add("hidden");
+  $("login-screen").classList.remove("hidden");
+  setLoginMode("login");
+  $("ln-pass").value = "";
+}
+$("logout").addEventListener("click", () => logout(true));
+
+async function enterApp() {
+  $("login-screen").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  showView("home");
+}
+(async () => {
+  if (!token()) return; // stay on the login screen
+  try { me = await api("me"); enterApp(); } catch { /* token invalid - login shown */ }
+})();
+
 /* ================= router ================= */
 document.querySelectorAll("nav button").forEach(btn =>
   btn.addEventListener("click", () => showView(btn.dataset.v)));
-const loaders = { home: loadHome, tasks: loadTasks, planner: loadPlanner, ai: loadAI, more: loadMore };
+const loaders = { home: loadHome, tasks: loadTasks, exams: loadExams, planner: loadPlanner, ai: loadAI, more: loadMore };
 function showView(name) {
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === name));
   document.querySelectorAll("section.view").forEach(s => s.classList.toggle("active", s.id === "view-" + name));
@@ -368,7 +461,7 @@ function showView(name) {
 async function loadHome() {
   const d = await api("dashboard");
   $("greeting").textContent = `Hi ${d.student_name} 👋`;
-  $("levelchip").textContent = `Lv ${d.level.level} · ${d.level.xp} XP`;
+  $("level-text").textContent = `Lv ${d.level.level} · ${d.level.xp} XP`;
   $("hm-level").textContent = `Level ${d.level.level}`;
   $("hm-xp").textContent = `${d.level.into_level}/100 XP to next level`;
   $("hm-xpbar").style.width = d.level.into_level + "%";
@@ -402,12 +495,15 @@ function taskRow(t) {
     <div class="meta">${t.subject ? esc(t.subject) + " · " : ""}${t.minutes ? t.minutes + " min · " : ""}${fmtDue(t.due_at)}</div></div>
     <button class="del spacer" onclick="delTask(${t.id})">✕</button></div>`;
 }
-async function loadTasks() {
-  const rows = await api("tasks?filter=" + taskFilter);
-  $("task-list").innerHTML = rows.length ? rows.map(taskRow).join("")
-    : `<div class="empty">${taskFilter === "done" ? "Nothing completed yet." : "No tasks here — add one below 👇"}</div>`;
+async function loadSubjects() {
   const subs = await api("subjects");
   $("subject-list").innerHTML = subs.map(s => `<option value="${esc(s.name)}">`).join("");
+  return subs;
+}
+async function loadTasks() {
+  const [rows] = await Promise.all([api("tasks?filter=" + taskFilter), loadSubjects()]);
+  $("task-list").innerHTML = rows.length ? rows.map(taskRow).join("")
+    : `<div class="empty">${taskFilter === "done" ? "Nothing completed yet." : "No tasks here — add one below 👇"}</div>`;
 }
 async function toggleTask(id, done) {
   try {
@@ -439,15 +535,46 @@ async function quickAdd() {
   el.value = ""; toast("Task added ✅"); loadHome();
 }
 
+/* ================= exams ================= */
+async function loadExams() {
+  const [rows] = await Promise.all([api("exams"), loadSubjects()]);
+  $("exam-rows").innerHTML = rows.length ? rows.map(e => `
+    <div class="exam">
+      <div><div style="font-size:14px">${esc(e.subject)}</div>
+      <div class="meta" style="font-size:10px;color:var(--faint)">${esc(e.occurs_at)}${e.done ? " · " + esc(e.result || "done") + (e.marks != null ? " · " + e.marks + " marks" : "") : ""}</div></div>
+      <span class="cd ${e.countdown === "TODAY!" ? "today" : ""}">${e.done ? "✔ done" : e.countdown}</span>
+      ${e.done ? "" : `<button class="small" onclick="markResult(${e.id})">Log result</button>`}
+      <button class="del" onclick="delExam(${e.id})">✕</button>
+    </div>`).join("")
+    : `<div class="empty">No exams yet — add your first one below.</div>`;
+}
+async function addExamUI() {
+  const subject = $("ex-subject").value.trim(), date = $("ex-date").value, time = $("ex-time").value || "09:30";
+  if (!subject || !date) return toast("Subject and date are needed.");
+  try {
+    await api("exams", { method: "POST", body: { subject, occurs_at: `${date} ${time}` } });
+    $("ex-subject").value = ""; $("ex-date").value = "";
+    toast("Exam added 🎯"); loadExams(); loadHome().catch(() => {});
+  } catch (err) { toast("⚠️ " + err.message); }
+}
+async function delExam(id) { await api("exams/" + id, { method: "DELETE" }); loadExams(); }
+async function markResult(id) {
+  const result = prompt("Result? (e.g. 'good', 'average', 'bad')");
+  if (result === null) return;
+  const marks = prompt("Marks (optional — leave empty to skip):");
+  const r = await api(`exams/${id}/result`, { method: "POST", body: { result, marks: marks ? +marks : null } });
+  if (r.leveled_up) toast(`🎉 LEVEL UP! You reached level ${r.level.level}!`);
+  else toast(`+${r.xp_gained} XP for showing up ⚡`);
+  loadExams();
+}
+
 /* ================= planner ================= */
 let previewPlan = null;
 async function loadPlanner() {
-  const latest = await api("planner/latest");
+  const [latest] = await Promise.all([api("planner/latest"), loadSubjects()]);
   $("pl-latest").textContent = latest
     ? `Latest plan: ${latest.title} — ${latest.tasks_total} tasks (${latest.tasks_pending} still pending) · created ${latest.created_at}`
     : "No plans yet — generate your first one above.";
-  const subs = await api("subjects");
-  $("subject-list").innerHTML = subs.map(s => `<option value="${esc(s.name)}">`).join("");
 }
 async function generatePlan() {
   const subject = $("pl-subject").value.trim();
@@ -517,7 +644,7 @@ async function sendChat() {
   aiBusy = true; $("chatsend").disabled = true;
   const bot = addBubble("bot", "<span class='spin'></span>");
   try {
-    const r = await api("chat", { method: "POST", body: { message: text, history, access_code: CODE() } });
+    const r = await api("chat", { method: "POST", body: { message: text, history } });
     bot.innerHTML = md(r.reply);
     history.push({ role: "assistant", content: r.reply });
   } catch (err) {
@@ -532,18 +659,18 @@ chatInput.addEventListener("keydown", e => {
 document.querySelectorAll(".chips button[data-p]").forEach(b =>
   b.addEventListener("click", () => { chatInput.value = b.dataset.p; sendChat(); }));
 
-/* ================= more: subjects / exams / progress / settings ================= */
+/* ================= more: subjects / progress / settings ================= */
 document.querySelectorAll("#subtabs button").forEach(b =>
   b.addEventListener("click", () => {
     document.querySelectorAll("#subtabs button").forEach(x => x.classList.toggle("on", x === b));
-    ["subjects", "exams", "progress", "settings"].forEach(s =>
+    ["subjects", "progress", "settings"].forEach(s =>
       $("sub-" + s).style.display = b.dataset.s === s ? "" : "none");
     if (b.dataset.s === "progress") loadProgress();
     if (b.dataset.s === "settings") loadSettings();
   }));
 async function loadMore() {
   renderSubjects();
-  renderExams();
+  if (me) $("st-user").textContent = `${me.display_name} (@${me.username})`;
 }
 async function renderSubjects() {
   const subs = await api("subjects");
@@ -554,46 +681,16 @@ async function renderSubjects() {
       <button class="del spacer" onclick="delSubject('${esc(s.name)}')">✕</button>
     </div>`).join("")
     : `<div class="empty">No subjects yet — add one below.</div>`;
+  loadSubjects();
 }
 async function addSubjectUI() {
   const el = $("sb-new"); if (!el.value.trim()) return;
-  try { await api("subjects", { method: "POST", body: { name: el.value.trim() } }); el.value = ""; renderSubjects(); loadTasks().catch(() => {}); }
+  try { await api("subjects", { method: "POST", body: { name: el.value.trim() } }); el.value = ""; renderSubjects(); }
   catch (err) { toast("⚠️ " + err.message); }
 }
 async function delSubject(name) {
   await api("subjects/" + encodeURIComponent(name), { method: "DELETE" });
   renderSubjects();
-}
-async function renderExams() {
-  const rows = await api("exams");
-  $("exam-rows").innerHTML = rows.length ? rows.map(e => `
-    <div class="exam">
-      <div><div style="font-size:14px">${esc(e.subject)}</div>
-      <div class="meta" style="font-size:10px;color:var(--faint)">${esc(e.occurs_at)}${e.done ? " · " + esc(e.result || "done") + (e.marks != null ? " · " + e.marks + " marks" : "") : ""}</div></div>
-      <span class="cd ${e.countdown === "TODAY!" ? "today" : ""}">${e.done ? "✔ done" : e.countdown}</span>
-      ${e.done ? "" : `<button class="small" onclick="markResult(${e.id})">Log result</button>`}
-      <button class="del" onclick="delExam(${e.id})">✕</button>
-    </div>`).join("")
-    : `<div class="empty">No exams yet — add your first one below.</div>`;
-}
-async function addExamUI() {
-  const subject = $("ex-subject").value.trim(), date = $("ex-date").value, time = $("ex-time").value || "09:30";
-  if (!subject || !date) return toast("Subject and date are needed.");
-  try {
-    await api("exams", { method: "POST", body: { subject, occurs_at: `${date} ${time}` } });
-    $("ex-subject").value = ""; $("ex-date").value = "";
-    toast("Exam added 🎯"); renderExams(); loadHome().catch(() => {});
-  } catch (err) { toast("⚠️ " + err.message); }
-}
-async function delExam(id) { await api("exams/" + id, { method: "DELETE" }); renderExams(); }
-async function markResult(id) {
-  const result = prompt("Result? (e.g. 'good', 'average', 'bad')");
-  if (result === null) return;
-  const marks = prompt("Marks (optional — leave empty to skip):");
-  const r = await api(`exams/${id}/result`, { method: "POST", body: { result, marks: marks ? +marks : null } });
-  if (r.leveled_up) toast(`🎉 LEVEL UP! You reached level ${r.level.level}!`);
-  else toast(`+${r.xp_gained} XP for showing up ⚡`);
-  renderExams();
 }
 function renderWeek(el, weekly) {
   const labels = ["M", "T", "W", "T", "F", "S", "S"];
@@ -634,17 +731,11 @@ async function saveSettings() {
   toast("Settings saved 💾"); loadHome();
 }
 async function resetAll() {
-  if (!confirm("Really delete ALL data from the cloud database?")) return;
+  if (!confirm("Really delete ALL data from YOUR account?")) return;
   if (!confirm("Last chance — this cannot be undone. Reset everything?")) return;
   await api("reset", { method: "POST" });
-  toast("All data reset 🧹"); showView("home");
+  toast("Your data was reset 🧹"); showView("home");
 }
-
-/* ================= boot ================= */
-api("health").then(h => {
-  $("health-line").textContent = h.ai === "ok" ? "AI online" : "AI offline";
-}).catch(() => { $("health-line").textContent = "offline"; });
-loadHome().catch(err => toast("⚠️ " + err.message));
 </script>
 </body>
 </html>

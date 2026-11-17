@@ -2,11 +2,12 @@
 
 The desktop app keeps its local SQLite file via store.py. The web app needs a
 database that survives across Vercel's serverless containers, so this module
-implements the SAME function names against Supabase's REST API (PostgREST).
+implements the SAME function names against Supabase's REST API (PostgREST),
+with one difference: every row is scoped to a user_id, so each student gets
+their own private data.
 
-Tables live in the public schema and were created by the migration
-`create_command_center_tables`. Row Level Security is ON; the server talks
-with the secret (service) key only - it is never sent to the browser.
+Row Level Security is ON; the server talks with the secret (service) key only
+- it is never sent to the browser. User isolation is enforced here, in the API.
 
 Dates are stored as plain "YYYY-MM-DD HH:MM" strings, exactly like store.py.
 "Today" is computed in IST (UTC+5:30) so countdowns match the student's day.
@@ -14,7 +15,9 @@ Dates are stored as plain "YYYY-MM-DD HH:MM" strings, exactly like store.py.
 
 from __future__ import annotations
 
+import hashlib
 import os
+import secrets
 from datetime import date, datetime, timedelta, timezone
 
 import httpx
@@ -117,20 +120,70 @@ def parse_dt(value: str | None) -> datetime | None:
         return None
 
 
+# ---------------------------------------------------------------------- users
+def _hash_password(password: str, salt: str) -> str:
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(salt), 200_000)
+    return digest.hex()
+
+
+def create_user(username: str, display_name: str, password: str) -> dict:
+    """Register a new student. Raises ValueError if the username is taken."""
+    username = username.strip().lower()
+    display_name = display_name.strip() or username
+    if not username or len(username) < 3:
+        raise ValueError("Username must be at least 3 characters.")
+    if len(password) < 4:
+        raise ValueError("Password must be at least 4 characters.")
+    if _select("users", params={"username": f"eq.{username}"}):
+        raise ValueError("That username is already taken.")
+    salt = secrets.token_hex(16)
+    rows = _insert("users", {
+        "username": username,
+        "display_name": display_name,
+        "password_hash": f"pbkdf2${salt}${_hash_password(password, salt)}",
+        "created_at": now_str(),
+    })
+    return {"username": rows[0]["username"], "display_name": rows[0]["display_name"]}
+
+
+def verify_user(username: str, password: str) -> dict | None:
+    """Return the user's public info if the password matches, else None."""
+    username = username.strip().lower()
+    rows = _select("users", params={"username": f"eq.{username}"})
+    if not rows:
+        return None
+    user = rows[0]
+    try:
+        _scheme, salt, stored = user["password_hash"].split("$", 2)
+    except ValueError:
+        return None
+    if secrets.compare_digest(_hash_password(password, salt), stored):
+        return {"username": user["username"], "display_name": user["display_name"]}
+    return None
+
+
+def get_user(username: str) -> dict | None:
+    rows = _select("users", params={"username": f"eq.{username.strip().lower()}"})
+    if not rows:
+        return None
+    return {"username": rows[0]["username"], "display_name": rows[0]["display_name"]}
+
+
 # --------------------------------------------------------------------- tasks
-def add_task(title: str, due_at: str | None = None, minutes: int | None = None,
-             subject: str | None = None, plan_id: int | None = None,
-             created_by: str = "user") -> int:
+def add_task(user_id: str, title: str, due_at: str | None = None,
+             minutes: int | None = None, subject: str | None = None,
+             plan_id: int | None = None, created_by: str = "user") -> int:
     rows = _insert("tasks", {
-        "title": title.strip(), "due_at": due_at, "minutes": minutes,
-        "subject": subject, "plan_id": plan_id, "created_by": created_by,
+        "user_id": user_id, "title": title.strip(), "due_at": due_at,
+        "minutes": minutes, "subject": subject, "plan_id": plan_id,
+        "created_by": created_by,
     })
     return int(rows[0]["id"])
 
 
-def list_tasks(include_done: bool = True, subject: str | None = None,
+def list_tasks(user_id: str, include_done: bool = True, subject: str | None = None,
                plan_id: int | None = None) -> list[dict]:
-    rows = _select("tasks")
+    rows = _select("tasks", params={"user_id": f"eq.{user_id}"})
     if not include_done:
         rows = [row for row in rows if not row["done"]]
     if subject:
@@ -142,61 +195,62 @@ def list_tasks(include_done: bool = True, subject: str | None = None,
     return rows
 
 
-def set_task_done(task_id: int, done: bool) -> None:
-    _update("tasks", {"id": f"eq.{task_id}"},
+def set_task_done(user_id: str, task_id: int, done: bool) -> None:
+    _update("tasks", {"user_id": f"eq.{user_id}", "id": f"eq.{task_id}"},
             {"done": 1 if done else 0, "completed_at": now_str() if done else None})
 
 
-def delete_task(task_id: int) -> None:
-    _delete("tasks", {"id": f"eq.{task_id}"})
+def delete_task(user_id: str, task_id: int) -> None:
+    _delete("tasks", {"user_id": f"eq.{user_id}", "id": f"eq.{task_id}"})
 
 
-def count_tasks(done: bool | None = None) -> int:
-    rows = _select("tasks")
+def count_tasks(user_id: str, done: bool | None = None) -> int:
+    rows = _select("tasks", params={"user_id": f"eq.{user_id}"})
     if done is None:
         return len(rows)
     return sum(1 for row in rows if row["done"] == (1 if done else 0))
 
 
 # --------------------------------------------------------------------- exams
-def add_exam(subject: str, occurs_at: str, created_by: str = "user") -> int:
-    rows = _insert("exams", {"subject": subject.strip(), "occurs_at": occurs_at,
-                             "created_by": created_by})
+def add_exam(user_id: str, subject: str, occurs_at: str, created_by: str = "user") -> int:
+    rows = _insert("exams", {"user_id": user_id, "subject": subject.strip(),
+                             "occurs_at": occurs_at, "created_by": created_by})
     return int(rows[0]["id"])
 
 
-def list_exams(only_upcoming: bool = False) -> list[dict]:
-    rows = _select("exams")
+def list_exams(user_id: str, only_upcoming: bool = False) -> list[dict]:
+    rows = _select("exams", params={"user_id": f"eq.{user_id}"})
     if only_upcoming:
         rows = [row for row in rows if row["occurs_at"] >= now_str()]
     rows.sort(key=lambda r: r["occurs_at"])
     return rows
 
 
-def next_exam() -> dict | None:
-    upcoming = list_exams(only_upcoming=True)
+def next_exam(user_id: str) -> dict | None:
+    upcoming = list_exams(user_id, only_upcoming=True)
     return upcoming[0] if upcoming else None
 
 
-def delete_exam(exam_id: int) -> None:
-    _delete("exams", {"id": f"eq.{exam_id}"})
+def delete_exam(user_id: str, exam_id: int) -> None:
+    _delete("exams", {"user_id": f"eq.{user_id}", "id": f"eq.{exam_id}"})
 
 
-def set_exam_result(exam_id: int, result: str, marks: int | None) -> None:
-    _update("exams", {"id": f"eq.{exam_id}"},
+def set_exam_result(user_id: str, exam_id: int, result: str, marks: int | None) -> None:
+    _update("exams", {"user_id": f"eq.{user_id}", "id": f"eq.{exam_id}"},
             {"done": 1, "result": result, "marks": marks})
 
 
-def completed_exam_count() -> int:
-    return sum(1 for row in _select("exams") if row["done"] == 1)
+def completed_exam_count(user_id: str) -> int:
+    return sum(1 for row in _select("exams", params={"user_id": f"eq.{user_id}"})
+               if row["done"] == 1)
 
 
 # -------------------------------------------------------------------- rewards
-def add_xp(amount: int) -> tuple[int, bool]:
+def add_xp(user_id: str, amount: int) -> tuple[int, bool]:
     """Add XP and return (total, leveled_up). One level per 100 XP."""
-    current = int(get_setting("xp", "0") or 0)
+    current = int(get_setting(user_id, "xp", "0") or 0)
     new_total = current + amount
-    set_setting("xp", str(new_total))
+    set_setting(user_id, "xp", str(new_total))
     leveled = level_for(new_total) > level_for(current)
     return new_total, leveled
 
@@ -205,8 +259,8 @@ def level_for(xp: int) -> int:
     return xp // 100 + 1
 
 
-def level_progress() -> dict:
-    xp = int(get_setting("xp", "0") or 0)
+def level_progress(user_id: str) -> dict:
+    xp = int(get_setting(user_id, "xp", "0") or 0)
     level = level_for(xp)
     return {
         "xp": xp,
@@ -217,48 +271,50 @@ def level_progress() -> dict:
 
 
 # ---------------------------------------------------------- notification log
-def mark_notification(kind: str, ref_id: int, day: str) -> bool:
+def mark_notification(user_id: str, kind: str, ref_id: int, day: str) -> bool:
     """Record a notification for (kind, ref, day). True if it was new."""
     rows = _insert("notification_log",
-                   {"kind": kind, "ref_id": ref_id, "day": day, "sent_at": now_str()},
+                   {"user_id": user_id, "kind": kind, "ref_id": ref_id,
+                    "day": day, "sent_at": now_str()},
                    on_conflict="kind,ref_id,day", ignore=True)
     return len(rows) > 0
 
 
 # ------------------------------------------------------------------ subjects
-def add_subject(name: str) -> bool:
+def add_subject(user_id: str, name: str) -> bool:
     name = name.strip()
     if not name:
         return False
-    existing = [s for s in _select("subjects")
+    existing = [s for s in _select("subjects", params={"user_id": f"eq.{user_id}"})
                 if s["name"].lower() == name.lower()]
     if existing:
         return False
-    _insert("subjects", {"name": name}, return_rows=False)
+    _insert("subjects", {"user_id": user_id, "name": name}, return_rows=False)
     return True
 
 
-def list_subjects() -> list[dict]:
-    rows = _select("subjects")
+def list_subjects(user_id: str) -> list[dict]:
+    rows = _select("subjects", params={"user_id": f"eq.{user_id}"})
     rows.sort(key=lambda r: r["name"])
     return rows
 
 
-def delete_subject(name: str) -> None:
-    name = name.strip()
-    _delete("subjects", {"name": f"ilike.{name}"})
+def delete_subject(user_id: str, name: str) -> None:
+    _delete("subjects", {"user_id": f"eq.{user_id}", "name": f"ilike.{name.strip()}"})
 
 
 # --------------------------------------------------------------------- plans
-def add_plan(title: str, exam_subject: str | None, total_minutes: int) -> int:
-    rows = _insert("plans", {"title": title.strip(), "exam_subject": exam_subject,
+def add_plan(user_id: str, title: str, exam_subject: str | None,
+             total_minutes: int) -> int:
+    rows = _insert("plans", {"user_id": user_id, "title": title.strip(),
+                             "exam_subject": exam_subject,
                              "created_at": now_str(), "total_minutes": total_minutes})
     return int(rows[0]["id"])
 
 
-def list_plans(limit: int = 5) -> list[dict]:
-    rows = _select("plans", params={"order": "id.desc", "limit": str(limit)})
-    return rows
+def list_plans(user_id: str, limit: int = 5) -> list[dict]:
+    return _select("plans", params={"user_id": f"eq.{user_id}",
+                                    "order": "id.desc", "limit": str(limit)})
 
 
 # ------------------------------------------------------------------ settings
@@ -268,47 +324,48 @@ DEFAULT_SETTINGS = {
 }
 
 
-def get_setting(key: str, default: str | None = None) -> str | None:
-    rows = _select("settings", params={"key": f"eq.{key}"})
+def get_setting(user_id: str, key: str, default: str | None = None) -> str | None:
+    rows = _select("settings", params={"user_id": f"eq.{user_id}", "key": f"eq.{key}"})
     if rows and rows[0]["value"] is not None:
         return rows[0]["value"]
     return DEFAULT_SETTINGS.get(key, default)
 
 
-def set_setting(key: str, value: str) -> None:
-    _insert("settings", {"key": key, "value": value}, on_conflict="key")
+def set_setting(user_id: str, key: str, value: str) -> None:
+    _insert("settings", {"user_id": user_id, "key": key, "value": value},
+            on_conflict="user_id,key")
 
 
 # ----------------------------------------------------------------- analytics
-def completed_counts_by_day(start: date, end: date) -> dict[str, int]:
+def completed_counts_by_day(user_id: str, start: date, end: date) -> dict[str, int]:
     counts: dict[str, int] = {}
-    for row in _select("tasks", params={"done": "eq.1"}):
+    for row in _select("tasks", params={"user_id": f"eq.{user_id}", "done": "eq.1"}):
         day = (row.get("completed_at") or "")[:10]
         if day and start.isoformat() <= day <= end.isoformat():
             counts[day] = counts.get(day, 0) + 1
     return counts
 
 
-def weekly_completed_counts() -> list[int]:
+def weekly_completed_counts(user_id: str) -> list[int]:
     """Completed tasks per weekday, Monday first. Mon..Sun."""
     today_ = today()
     monday = today_ - timedelta(days=today_.weekday())
-    counts = completed_counts_by_day(monday, monday + timedelta(days=6))
+    counts = completed_counts_by_day(user_id, monday, monday + timedelta(days=6))
     return [counts.get((monday + timedelta(days=i)).isoformat(), 0) for i in range(7)]
 
 
-def minutes_completed_on(day: date) -> int:
+def minutes_completed_on(user_id: str, day: date) -> int:
     total = 0
-    for row in _select("tasks", params={"done": "eq.1"}):
+    for row in _select("tasks", params={"user_id": f"eq.{user_id}", "done": "eq.1"}):
         if (row.get("completed_at") or "")[:10] == day.isoformat() and row.get("minutes"):
             total += row["minutes"]
     return total
 
 
-def subject_progress() -> list[dict]:
+def subject_progress(user_id: str) -> list[dict]:
     """Per subject: pending and completed task counts (tasks with a subject set)."""
     stats: dict[str, dict] = {}
-    for row in _select("tasks"):
+    for row in _select("tasks", params={"user_id": f"eq.{user_id}"}):
         subject = row.get("subject")
         if not subject:
             continue
@@ -317,10 +374,10 @@ def subject_progress() -> list[dict]:
     return [stats[key] for key in sorted(stats)]
 
 
-def study_streak() -> int:
+def study_streak(user_id: str) -> int:
     """Consecutive days (ending today) with at least one completed task."""
     days = {(row.get("completed_at") or "")[:10]
-            for row in _select("tasks", params={"done": "eq.1"})}
+            for row in _select("tasks", params={"user_id": f"eq.{user_id}", "done": "eq.1"})}
     days.discard("")
     if not days:
         return 0
@@ -335,8 +392,11 @@ def study_streak() -> int:
 
 
 # -------------------------------------------------------------------- danger
-def reset_all() -> None:
-    for table, key in (("tasks", "id"), ("exams", "id"), ("plans", "id"),
-                       ("subjects", "id"), ("settings", "key"),
-                       ("notification_log", "id")):
-        _delete(table, {key: "not.is.null"})
+def reset_all(user_id: str) -> None:
+    """Wipe only this user's data."""
+    _delete("tasks", {"user_id": f"eq.{user_id}"})
+    _delete("exams", {"user_id": f"eq.{user_id}"})
+    _delete("plans", {"user_id": f"eq.{user_id}"})
+    _delete("subjects", {"user_id": f"eq.{user_id}"})
+    _delete("settings", {"user_id": f"eq.{user_id}"})
+    _delete("notification_log", {"user_id": f"eq.{user_id}"})
